@@ -403,7 +403,7 @@
     // ═══════════════════════════════════════════
     // CONFIGURACIÓN — EDITAR AQUÍ TU URL DE API
     // ═══════════════════════════════════════════
-    const API_URL = 'https://script.google.com/macros/s/AKfycbzYYCThLblCqFZSYS9_ih2yqcEE1BuY8ECP5nkP0Q6fTykmqjTMVYE8Cc_vd19BYRCEPQ/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzRzLEDRQ0vqn0KHFWFpdAYvUPpKHLsV3-YvsMeh9i91zWKAZscezSSjIIyj_qexuMLqg/exec';
     // ═══════════════════════════════════════════
 
     let TOKEN = null, USER = null, D = null, EV = { id:null, nombre:'', foto:'', ratings:{} }, CHS = {}, ADM = { p:[], ps:[], ar:[], se:[] };
@@ -415,16 +415,18 @@
     ];
     function gc(i){return COLS[i%COLS.length];}
 
-    async function apiGet(action){
-      const p=new URLSearchParams({action}); if(TOKEN) p.set('token',TOKEN);
-      const r=await fetch(`${API_URL}?${p}`); const j=await r.json();
-      if(j.status==='error') throw new Error(j.error||j.message||'Error'); return j.data;
-    }
-    async function apiPost(action,body={}){
-      const p=new URLSearchParams({action});
-      if(TOKEN) body.token=TOKEN;
-      const r=await fetch(`${API_URL}?${p}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      const j=await r.json(); if(j.status==='error') throw new Error(j.error||j.message||'Error'); return j;
+    // CORS FIX: Todo va por POST con text/plain para evitar preflight
+    async function apiCall(action, extraData={}) {
+      const payload = JSON.stringify({ action, token: TOKEN, ...extraData });
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: payload
+        // NO Content-Type header = browser sends text/plain = NO preflight
+      });
+      // Apps Script redirects (302) — fetch follows automatically
+      const j = await r.json();
+      if (j.status === 'error') throw new Error(j.message || j.error || 'Error');
+      return j;
     }
 
     function toast(m,t='info'){const e=document.createElement('div');e.className=`tt tt-${t}`;e.textContent=m;document.getElementById('toasts').appendChild(e);setTimeout(()=>{e.style.opacity='0';e.style.transition='opacity 0.3s';setTimeout(()=>e.remove(),300);},3500);}
@@ -450,7 +452,7 @@
         if(!u||!p){document.getElementById('loginErr').textContent='Completá ambos campos';return;}
         const btn=document.getElementById('loginBtn'); btn.disabled=true; btn.textContent='Ingresando...';
         try{
-          const res=await apiPost('login',{usuario:u,password:p});
+          const res=await apiCall('login',{usuario:u,password:p});
           if(res.success){
             TOKEN=res.token; USER=res.usuario;
             if(USER.primerIngreso){document.getElementById('pwdOverlay').classList.add('open');}
@@ -466,7 +468,7 @@
         if(n!==c){document.getElementById('pwdErr').textContent='Las contraseñas no coinciden';return;}
         const btn=document.getElementById('pwdBtn'); btn.disabled=true; btn.textContent='Guardando...';
         try{
-          const res=await apiPost('cambiarPassword',{token:TOKEN,nuevaPassword:n});
+          const res=await apiCall('cambiarPassword',{token:TOKEN,nuevaPassword:n});
           if(res.success){document.getElementById('pwdOverlay').classList.remove('open');toast('Contraseña actualizada','ok');this.startApp();}
           else{document.getElementById('pwdErr').textContent=res.message;}
         }catch(e){document.getElementById('pwdErr').textContent=e.message;}
@@ -474,7 +476,7 @@
       },
 
       async logout(){
-        try{await apiPost('logout',{token:TOKEN});}catch(e){}
+        try{await apiCall('logout',{token:TOKEN});}catch(e){}
         TOKEN=null; USER=null; D=null;
         document.getElementById('appShell').classList.remove('show');
         document.getElementById('loginScreen').style.display='flex';
@@ -485,7 +487,7 @@
       async startApp(){
         document.getElementById('loginScreen').style.display='none';
         document.getElementById('appShell').classList.add('show');
-        try{D=await apiGet('getAllData');this.render();toast('Datos cargados','ok');}catch(e){toast(e.message,'err');}
+        try{D=(await apiCall('getAllData')).data;this.render();toast('Datos cargados','ok');}catch(e){toast(e.message,'err');}
       },
 
       render(){
@@ -567,7 +569,7 @@
         if(miss.length){toast('Falta: '+miss.join(', '),'err');return;}
         const btn=document.getElementById('evalBtn');btn.disabled=true;btn.textContent='Enviando...';
         try{
-          const res=await apiPost('guardarVotos',{
+          const res=await apiCall('guardarVotos',{
             token:TOKEN,evaluadoId:EV.id,evaluadoNombre:EV.nombre,
             calificaciones:params.map(p=>({parametro:p,puntuacion:EV.ratings[p]})),
             sede:document.getElementById('fSede').value||'',comentario:document.getElementById('evalCom').value
@@ -581,7 +583,7 @@
       // ── DASHBOARD ──
       async loadDash(){
         try{
-          const d=await apiGet('getDashboardData'),a=d.analytics||{};
+          const d=(await apiCall('getDashboardData')).data,a=d.analytics||{};
           document.getElementById('dSt').innerHTML=`
             <div class="st sb"><div class="st-i">📝</div><div class="st-n">${a.totalVotos||0}</div><div class="st-l">Total Votos</div></div>
             <div class="st sl"><div class="st-i">👥</div><div class="st-n">${a.votantesUnicos||0}</div><div class="st-l">Votantes</div></div>
@@ -599,7 +601,7 @@
       // ── REPORTES ──
       async loadRep(){
         try{
-          const d=await apiGet('getAllData'),cl=d.colaboradores||[],pr=d.promedios||{},g={};
+          const d=(await apiCall('getAllData')).data,cl=d.colaboradores||[],pr=d.promedios||{},g={};
           cl.forEach(c=>{const a=c.area||'Sin Área';if(!g[a])g[a]=[];g[a].push(c);});
           let rows='';
           Object.keys(g).sort().forEach(a=>{
@@ -615,7 +617,7 @@
       // ── ADMIN ──
       async loadAdm(){
         try{
-          const s=await apiGet('getAdminStats');
+          const s=(await apiCall('getAdminStats')).data;
           document.getElementById('aSt').innerHTML=`
             <div class="st sb"><div class="st-i">👥</div><div class="st-n">${s.totalColaboradores||0}</div><div class="st-l">Colaboradores</div></div>
             <div class="st sl"><div class="st-i">📋</div><div class="st-n">${s.totalAreas||0}</div><div class="st-l">Áreas</div></div>
@@ -633,7 +635,7 @@
         _v(k){return Array.from(document.querySelectorAll(`.ai-${k}`)).map(e=>e.value.trim()).filter(Boolean);},
         async save(k){
           const map={p:'saveParametros',ps:'saveParametrosSupervisores',ar:'saveAreas',se:'saveSedes'};
-          try{await apiPost(map[k],{token:TOKEN,valores:this._v(k)});ADM[k]=this._v(k);toast('Guardado','ok');}catch(e){toast(e.message,'err');}
+          try{await apiCall(map[k],{token:TOKEN,valores:this._v(k)});ADM[k]=this._v(k);toast('Guardado','ok');}catch(e){toast(e.message,'err');}
         }
       }
     };
