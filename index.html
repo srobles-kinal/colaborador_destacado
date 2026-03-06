@@ -151,13 +151,21 @@
         <div class="fg"><label class="fl">Nombre completo</label><input class="login-in" id="nuNombre" placeholder="Nombre Apellido"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="fg"><label class="fl">Rol</label><select class="fp" id="nuRol" style="width:100%"><option value="votante">Votante</option><option value="evaluado">Evaluado</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
-          <div class="fg"><label class="fl">Área</label><input class="login-in" id="nuArea" placeholder="Ej: TI"></div>
+          <div class="fg"><label class="fl">Área</label><select class="fp" id="nuArea" style="width:100%"><option value="">— Seleccionar —</option></select></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="fg"><label class="fl">Sede</label><input class="login-in" id="nuSede" placeholder="Ej: Álamos"></div>
+          <div class="fg"><label class="fl">Sede</label><select class="fp" id="nuSede" style="width:100%"><option value="">— Seleccionar —</option></select></div>
           <div class="fg"><label class="fl">Contraseña inicial</label><input class="login-in" type="password" id="nuPwd" placeholder="Temporal"></div>
         </div>
-        <div class="fg"><label class="fl">Permisos adicionales (separados por coma)</label><input class="login-in" id="nuPermisos" placeholder="dashboard,reportes"><div class="pwd-hint">Opciones: votar, dashboard, reportes, admin, usuarios</div></div>
+        <div class="fg"><label class="fl">Permisos adicionales</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="nu-perm"> Dashboard</label>
+            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="nu-perm"> Reportes</label>
+            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="admin" class="nu-perm"> Admin</label>
+            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="nu-perm"> Usuarios</label>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">URL de foto (opcional)</label><input class="login-in" id="nuFoto" placeholder="https://drive.google.com/..."></div>
       </div>
       <div class="mo-ft"><button class="btn-sub" onclick="App.saveNewUser()">Crear Usuario</button></div>
     </div>

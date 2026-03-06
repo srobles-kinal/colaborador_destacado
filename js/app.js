@@ -136,9 +136,10 @@ const App={
     if(navAdm)navAdm.classList.toggle('hidden',perms.indexOf('admin')<0);
 
     const a=DATA.analytics||{};
+    const mp=DATA.miPromedio?parseFloat(DATA.miPromedio).toFixed(1):'—';
     $('vSt').innerHTML=
-      '<div class="st sb"><div class="st-i">👥</div><div class="st-n">'+(DATA.colaboradores?.length||0)+'</div><div class="st-l">Colaboradores</div></div>'+
-      '<div class="st sl"><div class="st-i">📝</div><div class="st-n">'+(a.totalVotos||0)+'</div><div class="st-l">Evaluaciones</div></div>'+
+      '<div class="st sb"><div class="st-i">⭐</div><div class="st-n">'+mp+'</div><div class="st-l">Mi Promedio</div></div>'+
+      '<div class="st sl"><div class="st-i">👥</div><div class="st-n">'+(DATA.colaboradores?.length||0)+'</div><div class="st-l">Por Evaluar</div></div>'+
       '<div class="st sa"><div class="st-i">📊</div><div class="st-n">'+(a.tasaParticipacion||0)+'%</div><div class="st-l">Participación</div></div>';
 
     this.renderFilters();this.renderAreas();
@@ -153,6 +154,7 @@ const App={
   renderAreas(){
     const ct=$('areaCont'),search=$('fS').value.toLowerCase(),sede=$('fSede').value;
     let cl=DATA.colaboradores||[];
+    // Self already excluded by backend
     if(sede)cl=cl.filter(x=>x.sede===sede);
     if(search)cl=cl.filter(x=>x.nombre.toLowerCase().includes(search));
     const g={};cl.forEach(x=>{const a=x.area||'Sin Área';if(!g[a])g[a]=[];g[a].push(x)});
@@ -303,18 +305,46 @@ const App={
         '<td>'+esc(u.nombre)+'</td>'+
         '<td><span class="ch ch-r" style="font-size:.65rem">'+esc(u.rol)+'</span></td>'+
         '<td>'+esc(u.area||'—')+'</td><td>'+esc(u.sede||'—')+'</td>'+
-        '<td style="display:flex;gap:4px">'+
+        '<td style="display:flex;gap:4px;flex-wrap:wrap">'+
           '<button class="btn bo" style="padding:4px 8px;font-size:.68rem" onclick="App.editUser(\''+esc(u.email)+'\')">✏️</button>'+
+          '<button class="btn bo" style="padding:4px 8px;font-size:.68rem" onclick="App.resetPwd(\''+esc(u.email)+'\')">🔑</button>'+
           '<button class="btn bd" style="padding:4px 8px;font-size:.68rem" onclick="App.delUser(\''+esc(u.email)+'\')">🗑</button>'+
         '</td></tr>').join('');
+      // Populate area/sede selects in new user modal from existing data
+      this.populateUserSelects();
     }catch(e){toast(e.message,'err')}
   },
 
-  openNewUser(){$('nuEmail').value='';$('nuNombre').value='';$('nuRol').value='votante';$('nuArea').value='';$('nuSede').value='';$('nuPwd').value='';$('nuPermisos').value='';$('nuOv').classList.add('open')},
+  populateUserSelects(){
+    const areas=ADM.ar||[];
+    const sedes=ADM.se||[];
+    const areaSelect=$('nuArea');
+    const sedeSelect=$('nuSede');
+    if(areaSelect&&areaSelect.tagName==='SELECT'){
+      areaSelect.innerHTML='<option value="">— Seleccionar —</option>'+areas.map(a=>'<option value="'+esc(a)+'">'+esc(a)+'</option>').join('');
+    }
+    if(sedeSelect&&sedeSelect.tagName==='SELECT'){
+      sedeSelect.innerHTML='<option value="">— Seleccionar —</option>'+sedes.map(s=>'<option value="'+esc(s)+'">'+esc(s)+'</option>').join('');
+    }
+  },
+
+  async resetPwd(email){
+    if(!confirm('¿Reiniciar contraseña de '+email+'?\nEl usuario deberá crear una nueva al ingresar.'))return;
+    try{const r=await api.resetPassword(email);if(r.success)toast('Contraseña reiniciada','ok');else toast(r.message,'err')}catch(e){toast(e.message,'err')}
+  },
+
+  openNewUser(){$('nuEmail').value='';$('nuNombre').value='';$('nuRol').value='votante';$('nuPwd').value='';
+    if($('nuFoto'))$('nuFoto').value='';
+    document.querySelectorAll('.nu-perm').forEach(c=>{c.checked=false});
+    this.populateUserSelects();
+    $('nuOv').classList.add('open')},
   closeNewUser(){$('nuOv').classList.remove('open')},
 
   async saveNewUser(){
-    const d={email:$('nuEmail').value.trim(),nombre:$('nuNombre').value.trim(),rol:$('nuRol').value,area:$('nuArea').value.trim(),sede:$('nuSede').value.trim(),password:$('nuPwd').value,permisos:$('nuPermisos').value.trim()};
+    const permsChecked=Array.from(document.querySelectorAll('.nu-perm:checked')).map(c=>c.value).join(',');
+    const d={email:$('nuEmail').value.trim(),nombre:$('nuNombre').value.trim(),rol:$('nuRol').value,
+      area:$('nuArea').value,sede:$('nuSede').value,password:$('nuPwd').value,
+      permisos:permsChecked,foto:$('nuFoto')?$('nuFoto').value.trim():''};
     if(!d.email||!d.nombre){toast('Email y nombre requeridos','err');return}
     try{const r=await api.crearUsuario(d);if(r.success){toast('Usuario creado','ok');this.closeNewUser();this.loadUsers()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}
   },
@@ -342,7 +372,23 @@ const App={
       try{await api[map[k]](this._v(k));ADM[k]=this._v(k);toast('Guardado','ok')}catch(e){toast(e.message,'err')}
     }
   },
-  expX(){toast('Exportación Excel próximamente','info')},expP(){toast('Exportación PDF próximamente','info')},
+  async expX(){
+    toast('Generando reporte...','info');
+    try{
+      const d=await api.exportReport();
+      if(!d||!d.rows){toast('Sin datos','err');return}
+      // Build CSV
+      const csv=d.rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download='reporte_evaluaciones_'+new Date().toISOString().slice(0,10)+'.csv';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('Reporte descargado','ok');
+    }catch(e){toast(e.message,'err')}
+  },
+  expP(){toast('Exportación PDF próximamente','info')},
 };
 function stars_(p){if(!p)return'☆☆☆☆☆';const v=parseFloat(p)/2;let s='';for(let i=1;i<=5;i++)s+=i<=Math.round(v)?'★':'☆';return'<span style="color:#f59e0b;letter-spacing:2px">'+s+'</span>'}
 window.App=App;

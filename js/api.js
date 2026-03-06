@@ -3,7 +3,7 @@
  */
 // ══════════════════════════════════════════════
 //  CONFIGURAR TU URL DE DEPLOY AQUÍ:
-const API_URL = 'https://script.google.com/macros/s/AKfycbwx9Dw5NOkA9zWrSoM88lfGzfjw8vrQXErHZ0bq7jrPbEOkSKe3VSe7jOKtaILxGwvj0Q/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzQKlo-9PkokxLZPSJ61ueJMIQpsB_Aw0-ydORn4r_cgHAer1Dz8bZQ8Vt5hNnA5hf_9A/exec';
 // ══════════════════════════════════════════════
 
 let _tk = null;
@@ -26,6 +26,8 @@ const api = {
   crearUsuario(d){return this.call('crearUsuario',d)},
   editarUsuario(d){return this.call('editarUsuario',d)},
   eliminarUsuario(e){return this.call('eliminarUsuario',{email:e})},
+  resetPassword(e){return this.call('resetPassword',{email:e})},
+  async exportReport(){return(await this.call('exportReport')).data},
   saveParametros(v){return this.call('saveParametros',{valores:v})},
   saveParametrosSup(v){return this.call('saveParametrosSupervisores',{valores:v})},
   saveAreas(v){return this.call('saveAreas',{valores:v})},

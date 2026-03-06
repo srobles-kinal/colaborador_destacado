@@ -27,6 +27,8 @@ function doPost(e){
       case 'editarUsuario':return jr_(editarUsuario_(b));
       case 'eliminarUsuario':return jr_(eliminarUsuario_(b));
       case 'saveParametros':case 'saveParametrosSupervisores':case 'saveAreas':case 'saveSedes':return jr_(saveList_(b));
+      case 'resetPassword':return jr_(resetPwd_(b));
+      case 'exportReport':return wA_(b,exportReport_);
       default:return err_('Acción: '+a)
     }
   }catch(x){return err_(x.toString())}
@@ -132,21 +134,38 @@ function logout_(b){rmSes_(b.token);return{status:'ok',success:true}}
 function getAllData_(ses){
   var usr=findU_(ses.usuario);if(!usr)throw new Error('User not found');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var cols=readColaboradores_(ss);
+  var allCols=readColaboradores_(ss);
   
-  // FILTERING LOGIC:
-  // admin/supervisor: see all
-  // others with "mini muni" in sede: filter by sede only
-  // others: filter by area
+  // Get all supervisors (everyone can evaluate them)
+  var supervisores=allCols.filter(function(c){
+    // Read role from Usuarios
+    var u=findU_(c.email);
+    return u&&(u.rol==='supervisor');
+  });
+  
+  // FILTERING LOGIC
   var isAdm=usr.rol==='admin'||usr.rol==='supervisor';
-  if(!isAdm){
+  var cols;
+  if(isAdm){
+    cols=allCols;
+  }else{
     var isMini=usr.sede&&usr.sede.toLowerCase().indexOf('mini')>=0;
     if(isMini){
-      cols=cols.filter(function(c){return c.sede.toLowerCase().trim()===usr.sede.toLowerCase().trim()});
+      cols=allCols.filter(function(c){return c.sede.toLowerCase().trim()===usr.sede.toLowerCase().trim()});
     }else if(usr.area){
-      cols=cols.filter(function(c){return c.area.toLowerCase().trim()===usr.area.toLowerCase().trim()});
+      cols=allCols.filter(function(c){return c.area.toLowerCase().trim()===usr.area.toLowerCase().trim()});
+    }else{
+      cols=allCols;
     }
+    // Add supervisors that aren't already in the filtered list
+    var colEmails={};cols.forEach(function(c){colEmails[c.email.toLowerCase()]=true});
+    supervisores.forEach(function(s){
+      if(!colEmails[s.email.toLowerCase()]){cols.push(s);colEmails[s.email.toLowerCase()]=true}
+    });
   }
+  
+  // Exclude self (user cannot self-evaluate)
+  cols=cols.filter(function(c){return c.email.toLowerCase()!==usr.email.toLowerCase()});
 
   var params=lst_(ss,'Parametros'),pSup=lst_(ss,'Parametros Supervisores'),areas=lst_(ss,'Areas'),sedes=lst_(ss,'Sedes');
   var votos=readVotos_(ss);
@@ -168,6 +187,9 @@ function getAllData_(ses){
     }
   }
 
+  // Mi promedio (logged user's own score)
+  var miProm=pf[usr.email]||0;
+
   // Build permissions
   var basePerms={admin:['votar','dashboard','reportes','admin','usuarios'],supervisor:['votar','dashboard','reportes'],votante:['votar'],evaluado:['votar']};
   var perms=basePerms[usr.rol]||['votar'];
@@ -176,6 +198,7 @@ function getAllData_(ses){
   return{
     usuario:{email:usr.email,nombre:usr.nombre,rol:usr.rol,area:usr.area,sede:usr.sede,foto:usr.foto,permisos:perms},
     colaboradores:cols,
+    miPromedio:miProm,
     parametros:params.length?params:['Calidad de Trabajo'],
     parametrosSupervisores:pSup.length?pSup:['Liderazgo'],
     areas:areas,sedes:sedes,evaluacionesUnicas:evU,promedios:pf,
@@ -299,6 +322,31 @@ function saveList_(b){
   if(sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,1).clearContent();
   if(b.valores&&b.valores.length)sh.getRange(2,1,b.valores.length,1).setValues(b.valores.map(function(v){return[v]}));
   return{status:'ok',success:true};
+}
+
+/* Reset Password (admin only) */
+function resetPwd_(b){
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var u=findU_(b.email);if(!u)return{status:'error',message:'No encontrado'};
+  if(u.m.pwd!==undefined)u.sh.getRange(u.ri+1,u.m.pwd+1).setValue('');
+  if(u.m.primer!==undefined)u.sh.getRange(u.ri+1,u.m.primer+1).setValue(true);
+  log_('PWD_RESET',s.usuario,{t:b.email});
+  return{status:'ok',success:true,message:'Contraseña reiniciada'};
+}
+
+/* Export Report - returns CSV-ready array */
+function exportReport_(ses){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var allCols=readColaboradores_(ss),votos=readVotos_(ss);
+  var proms={};
+  for(var i=0;i<votos.length;i++){var v=votos[i];if(v.ei&&!isNaN(v.p)&&v.p>0){if(!proms[v.ei])proms[v.ei]={s:0,c:0};proms[v.ei].s+=v.p;proms[v.ei].c++}}
+  var pf={};for(var k in proms){pf[k]=proms[k].c>0?(proms[k].s/proms[k].c).toFixed(2):'0'}
+  var ec={};for(var i=0;i<votos.length;i++){if(!ec[votos[i].ei])ec[votos[i].ei]={};ec[votos[i].ei][votos[i].vt]=true}
+  var rows=[['Nombre','Email','Área','Sede','Promedio','Evaluaciones']];
+  allCols.sort(function(a,b){return(a.area||'').localeCompare(b.area||'')});
+  for(var i=0;i<allCols.length;i++){var c=allCols[i];rows.push([c.nombre,c.email,c.area,c.sede,pf[c.email]||'0',ec[c.email]?Object.keys(ec[c.email]).length:0])}
+  return{rows:rows};
 }
 
 /* Helpers */
