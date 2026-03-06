@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración — Votación Premium</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #10069F;
+      --primary-dark: #0a0470;
+      --accent: #97D700;
+      --danger: #e63946;
+      --surface: #ffffff;
+      --surface-2: #f4f5f9;
+      --text-1: #1a1a2e;
+      --text-2: #555770;
+      --text-3: #8b8da3;
+      --border: #dfe1ec;
+      --radius: 14px;
+      --shadow-sm: 0 1px 3px rgba(16,6,159,0.06);
+      --shadow-md: 0 4px 20px rgba(16,6,159,0.08);
+      --font-body: 'DM Sans', system-ui, sans-serif;
+      --font-display: 'Instrument Serif', Georgia, serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--surface-2);
+      color: var(--text-1);
+      min-height: 100vh;
+      padding: clamp(16px, 3vw, 40px);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* Header institucional */
+    .inst-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      padding: 24px 32px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .inst-logo {
+      width: 64px; height: 64px;
+      object-fit: contain;
+      background: #fff;
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .inst-text { flex: 1; text-align: center; }
+
+    .inst-title {
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+    }
+
+    .inst-sub {
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .page-header {
+      background: var(--surface);
+      padding: 28px 32px;
+      border-radius: 0 0 var(--radius) var(--radius);
+      border-bottom: 4px solid var(--accent);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 28px;
+      text-align: center;
+    }
+
+    .page-header h1 {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--primary);
+    }
+
+    .page-header p { color: var(--text-3); margin-top: 4px; }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      background: var(--surface);
+      border: 1.5px solid var(--accent);
+      border-radius: 10px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin-bottom: 20px;
+      transition: all 0.2s;
+    }
+    .back-link:hover { background: var(--accent); }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      color: var(--text-1);
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--surface-2);
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-box {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      padding: 24px;
+      border-radius: var(--radius);
+      color: #fff;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 2.4rem;
+      line-height: 1;
+    }
+
+    .stat-lbl {
+      font-size: 0.82rem;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    /* Items */
+    .item-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .item-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+    }
+    .item-input:focus { border-color: var(--primary); outline: none; }
+
+    .btn-del {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      border: 1.5px solid var(--danger);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--danger);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-del:hover { background: var(--danger); color: #fff; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 22px;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.88rem;
+    }
+
+    .btn-add { background: var(--accent); color: var(--primary-dark); }
+    .btn-add:hover { filter: brightness(0.92); }
+
+    .btn-save { background: var(--primary); color: #fff; margin-top: 12px; }
+    .btn-save:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-download { background: var(--primary); color: #fff; margin-right: 8px; }
+    .btn-download:hover { background: var(--primary-dark); }
+
+    /* Message */
+    .msg {
+      padding: 14px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 600;
+      margin: 16px 0;
+      animation: fadeUp 0.3s ease;
+    }
+    .msg-ok { background: #ecfdf5; color: #2d6a4f; border: 1px solid #a7f3d0; }
+    .msg-err { background: #fef2f2; color: #e63946; border: 1px solid #fecaca; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .loader { text-align: center; padding: 40px; color: var(--text-3); }
+
+    @media (max-width: 768px) {
+      .inst-header { flex-direction: column; text-align: center; }
+      .inst-logo { width: 48px; height: 48px; }
+      .item-row { flex-direction: column; align-items: stretch; }
+      .btn-del { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <a href="index.html" class="back-link">← Volver a Votación</a>
+
+    <div class="inst-header">
+      <img src="https://lh3.googleusercontent.com/d/1NOORSYCXIaHFxI6ex8sPT6jBL9snmkx_" alt="Escudo" class="inst-logo" crossorigin="anonymous">
+      <div class="inst-text">
+        <div class="inst-title">Dirección de Atención al Vecino</div>
+        <div class="inst-sub">Municipalidad de Guatemala</div>
+      </div>
+      <img src="https://lh3.googleusercontent.com/d/1NOORSYCXIaHFxI6ex8sPT6jBL9snmkx_" alt="Escudo" class="inst-logo" crossorigin="anonymous">
+    </div>
+
+    <div class="page-header">
+      <h1>⚙ Panel de Administración</h1>
+      <p>Gestiona parámetros y descarga reportes</p>
+    </div>
+
+    <div id="msgArea"></div>
+
+    <div class="card">
+      <div class="card-title">📊 Estadísticas</div>
+      <div class="stats-grid" id="statsGrid">
+        <div class="loader">Cargando...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📥 Descargar Reportes</div>
+      <button class="btn btn-download" onclick="Admin.downloadExcel()">📊 Excel</button>
+      <button class="btn btn-download" onclick="Admin.downloadPDF()">📄 PDF</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Parámetros Generales</div>
+      <div id="paramContainer"></div>
+      <button class="btn btn-add" onclick="Admin.add('params')">+ Agregar</button>
+      <button class="btn btn-save" onclick="Admin.save('params')">💾 Guardar</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👔 Parámetros Supervisores</div>
+      <div id="paramSupContainer"></div>
+      <button class="btn btn-add" onclick="Admin.add('paramsSup')">+ Agregar</button>
+      <button class="btn btn-save" onclick="Admin.save('paramsSup')">💾 Guardar</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Áreas</div>
+      <div id="areaContainer"></div>
+      <button class="btn btn-add" onclick="Admin.add('areas')">+ Agregar</button>
+      <button class="btn btn-save" onclick="Admin.save('areas')">💾 Guardar</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏢 Sedes</div>
+      <div id="sedeContainer"></div>
+      <button class="btn btn-add" onclick="Admin.add('sedes')">+ Agregar</button>
+      <button class="btn btn-save" onclick="Admin.save('sedes')">💾 Guardar</button>
+    </div>
+  </div>
+
+  <script>
+    // === API CONFIG (lee de localStorage, compartido con index.html) ===
+    const API = {
+      BASE_URL: localStorage.getItem('api_url') || '',
+      TOKEN: localStorage.getItem('api_token') || '',
+
+      async get(action) {
+        const p = new URLSearchParams({ action, origin: location.origin });
+        if (this.TOKEN) p.set('token', this.TOKEN);
+        const res = await fetch(`${this.BASE_URL}?${p}`);
+        const json = await res.json();
+        if (json.status === 'error') throw new Error(json.error);
+        return json.data;
+      },
+
+      async post(action, body = {}) {
+        const p = new URLSearchParams({ action, origin: location.origin });
+        if (this.TOKEN) body.token = this.TOKEN;
+        const res = await fetch(`${this.BASE_URL}?${p}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (json.status === 'error') throw new Error(json.error);
+        return json.data;
+      }
+    };
+
+    // === STATE ===
+    let data = { params: [], paramsSup: [], areas: [], sedes: [] };
+
+    // === ADMIN OBJECT ===
+    window.Admin = {
+      async init() {
+        if (!API.BASE_URL) {
+          showMsg('Configura la API en la página principal primero', 'err');
+          return;
+        }
+        try {
+          const stats = await API.get('getAdminStats');
+          data.params = stats.parametros || [];
+          data.paramsSup = stats.parametrosSupervisores || [];
+          data.areas = stats.areas || [];
+          data.sedes = stats.sedes || [];
+
+          document.getElementById('statsGrid').innerHTML = `
+            <div class="stat-box"><div class="stat-num">${stats.totalColaboradores || 0}</div><div class="stat-lbl">Colaboradores</div></div>
+            <div class="stat-box"><div class="stat-num">${stats.totalAreas || 0}</div><div class="stat-lbl">Áreas</div></div>
+            <div class="stat-box"><div class="stat-num">${stats.colaboradoresEvaluados || 0}</div><div class="stat-lbl">Evaluados</div></div>
+          `;
+
+          this.renderAll();
+        } catch (err) {
+          showMsg('Error: ' + err.message, 'err');
+        }
+      },
+
+      renderAll() {
+        renderList('paramContainer', data.params, 'params');
+        renderList('paramSupContainer', data.paramsSup, 'paramsSup');
+        renderList('areaContainer', data.areas, 'areas');
+        renderList('sedeContainer', data.sedes, 'sedes');
+      },
+
+      add(key) {
+        data[key].push('Nuevo');
+        this.renderAll();
+      },
+
+      remove(key, i) {
+        if (data[key].length <= 1) { showMsg('Se necesita al menos 1 elemento', 'err'); return; }
+        data[key].splice(i, 1);
+        this.renderAll();
+      },
+
+      async save(key) {
+        const map = {
+          params: { action: 'saveParametros', cls: 'inp-params' },
+          paramsSup: { action: 'saveParametrosSupervisores', cls: 'inp-paramsSup' },
+          areas: { action: 'saveAreas', cls: 'inp-areas' },
+          sedes: { action: 'saveSedes', cls: 'inp-sedes' }
+        };
+        const cfg = map[key];
+        const vals = Array.from(document.querySelectorAll('.' + cfg.cls)).map(el => el.value.trim()).filter(Boolean);
+
+        if (!vals.length) { showMsg('Ingresa al menos 1 valor', 'err'); return; }
+
+        try {
+          await API.post(cfg.action, { valores: vals });
+          data[key] = vals;
+          showMsg('Guardado correctamente', 'ok');
+        } catch (err) {
+          showMsg('Error: ' + err.message, 'err');
+        }
+      },
+
+      downloadExcel() { showMsg('Exportación Excel próximamente', 'ok'); },
+      downloadPDF() { showMsg('Exportación PDF próximamente', 'ok'); }
+    };
+
+    function renderList(containerId, arr, key) {
+      const el = document.getElementById(containerId);
+      el.innerHTML = arr.map((val, i) => `
+        <div class="item-row">
+          <input type="text" class="item-input inp-${key}" value="${val}">
+          <button class="btn-del" onclick="Admin.remove('${key}', ${i})">🗑</button>
+        </div>
+      `).join('');
+    }
+
+    function showMsg(text, type) {
+      const area = document.getElementById('msgArea');
+      area.innerHTML = `<div class="msg msg-${type}">${text}</div>`;
+      setTimeout(() => area.innerHTML = '', 4000);
+    }
+
+    Admin.init();
+  </script>
+</body>
+</html>
