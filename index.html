@@ -128,7 +128,14 @@
   <!-- MODAL: EVALUAR -->
   <div class="mo-bg" id="evalOv">
     <div class="mo">
-      <div class="mo-top"><img class="mo-av" id="evalFoto" src="" alt=""><div class="mo-inf"><div class="mo-nm" id="evalNm">—</div><div class="mo-mt" id="evalMt">—</div></div><button class="mo-x" onclick="App.closeEval()">✕</button></div>
+      <div class="mo-top">
+        <button class="mo-x" onclick="App.closeEval()">✕</button>
+        <div class="mo-profile">
+          <img class="mo-av" id="evalFoto" src="" alt="">
+          <div class="mo-nm" id="evalNm">—</div>
+          <div class="mo-mt" id="evalMt">—</div>
+        </div>
+      </div>
       <div class="mo-bd" id="evalBd"></div>
       <div class="mo-bd" style="padding-top:0"><div class="fg"><label class="fl">Comentario (opcional)</label><textarea class="fta" id="evalCom" placeholder="Comparte tu experiencia..."></textarea></div></div>
       <div class="mo-ft"><button class="btn-sub" id="evalBtn" onclick="App.submitEval()">Enviar Evaluación</button></div>

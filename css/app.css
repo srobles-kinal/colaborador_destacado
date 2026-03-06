@@ -132,11 +132,12 @@ body{font-family:'Montserrat',sans-serif;background:var(--s0);color:var(--s9);mi
 .mo-bg.open{display:flex}
 .mo{background:var(--w);border-radius:var(--r-x);width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:var(--sh-l);animation:moP .3s var(--ease)}
 @keyframes moP{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.mo-top{padding:24px 24px 0;display:flex;gap:14px;align-items:flex-start}
-.mo-av{width:64px;height:64px;border-radius:16px;object-fit:cover;background:var(--s2);flex-shrink:0;border:3px solid var(--b1)}
-.mo-inf{flex:1}.mo-nm{font-size:1.1rem;font-weight:800;margin-bottom:1px}.mo-mt{font-size:.76rem;color:var(--s5);font-weight:500}
-.mo-x{width:32px;height:32px;display:grid;place-items:center;border:0;background:var(--s1);border-radius:9px;cursor:pointer;font-size:.95rem;color:var(--s4);flex-shrink:0;transition:all .2s}
+.mo-top{padding:24px 24px 0;position:relative}
+.mo-x{position:absolute;top:16px;right:16px;width:32px;height:32px;display:grid;place-items:center;border:0;background:var(--s1);border-radius:9px;cursor:pointer;font-size:.95rem;color:var(--s4);z-index:1;transition:all .2s}
 .mo-x:hover{background:var(--r0);color:var(--r5)}
+.mo-profile{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:8px}
+.mo-av{width:96px;height:96px;border-radius:50%;object-fit:cover;background:var(--s2);border:4px solid var(--b1);box-shadow:0 4px 16px rgba(16,6,159,.12);margin-bottom:12px}
+.mo-nm{font-size:1.15rem;font-weight:800;margin-bottom:2px}.mo-mt{font-size:.78rem;color:var(--s5);font-weight:500}
 .mo-bd{padding:20px 24px}
 .rb{margin-bottom:16px}.rl{font-size:.78rem;font-weight:700;color:var(--s7);margin-bottom:7px}
 .rr{display:flex;gap:4px;flex-wrap:wrap}
@@ -193,8 +194,60 @@ tbody tr:hover{background:var(--s0)}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
 
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:1024px){
+  .ch-r{grid-template-columns:1fr 1fr}
+  .top-cards{grid-template-columns:1fr 1fr}
+}
 @media(max-width:768px){
-  .top-r .ch-u,.top-r .ch-a,.top-avatar{display:none}
-  .cg,.top-cards{grid-template-columns:1fr}.ch-r{grid-template-columns:1fr}
-  .tb{flex-direction:column}.sr{min-width:100%}.login-box{padding:32px 20px}
+  .top-r .ch-u,.top-r .ch-a{display:none}
+  .top-in{height:52px;padding:0 12px}
+  .br h1{font-size:.82rem}.br span{display:none}
+  .br-logo{width:32px;height:32px;font-size:.85rem}
+  .nv-in{padding:0 8px}
+  .nb{padding:9px 12px;font-size:.72rem}
+  .mn{padding:12px}
+  .wlc{padding:20px;border-radius:var(--r-l)}
+  .wlc h2{font-size:1.15rem}
+  .sts{grid-template-columns:repeat(2,1fr);gap:8px}
+  .st{padding:14px 16px}
+  .st-n{font-size:1.3rem}
+  .cg{grid-template-columns:1fr}
+  .ch-r{grid-template-columns:1fr}
+  .top-cards{grid-template-columns:1fr}
+  .tb{flex-direction:column}
+  .sr{min-width:100%}
+  .cd{padding:16px;border-radius:var(--r)}
+  .mo{max-width:100%;border-radius:var(--r-l);margin:8px}
+  .mo-av{width:80px;height:80px}
+  .mo-bd{padding:16px}
+  .mo-ft{padding:0 16px 18px}
+  .rb-b{width:30px;height:30px;font-size:.72rem;border-radius:6px}
+  .rr{gap:3px}
+  .login-box{padding:28px 18px;border-radius:var(--r-l)}
+  .login-h{font-size:1.25rem}
+  .login-avatar{width:60px;height:60px}
+  table{font-size:.75rem}
+  thead th{padding:7px 8px;font-size:.62rem}
+  tbody td{padding:7px 8px}
+  .ah{padding:12px 14px}
+  .ah-ic{width:32px;height:32px;font-size:.85rem}
+  .ah-nm{font-size:.82rem}
+  .ab{padding:12px 14px 16px}
+  .cc{padding:12px;gap:10px}
+  .av{width:38px;height:38px;border-radius:9px}
+  .cn{font-size:.8rem}.cm{font-size:.65rem}
+  .btn-ev{padding:6px;font-size:.7rem}
+  .top-card{padding:12px;gap:10px}
+  .top-card img{width:36px;height:36px;border-radius:9px}
+  .top-card-name{font-size:.78rem}
+  .top-card-score{font-size:.95rem}
+}
+@media(max-width:420px){
+  .sts{grid-template-columns:1fr}
+  .mo-av{width:68px;height:68px}
+  .rb-b{width:28px;height:28px;font-size:.68rem}
+  .top-in{gap:6px}
+  .btn-out{padding:5px 8px;font-size:.65rem}
+  .top-avatar{width:28px;height:28px}
 }

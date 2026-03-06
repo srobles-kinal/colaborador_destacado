@@ -132,7 +132,7 @@ function logout_(b){rmSes_(b.token);return{status:'ok',success:true}}
 function getAllData_(ses){
   var usr=findU_(ses.usuario);if(!usr)throw new Error('User not found');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var cols=readCols_(ss.getSheetByName('Colaboradores'));
+  var cols=readColaboradores_(ss);
   
   // FILTERING LOGIC:
   // admin/supervisor: see all
@@ -189,7 +189,7 @@ function getAllData_(ses){
 function getDash_(ses){
   var usr=findU_(ses.usuario);if(!usr)throw new Error('NF');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var allCols=readCols_(ss.getSheetByName('Colaboradores'));
+  var allCols=readColaboradores_(ss);
   var votos=readVotos_(ss);
   // Global analytics
   var proms={};
@@ -213,8 +213,8 @@ function getDash_(ses){
 }
 
 function getAdminStats_(ses){
-  var ss=SpreadsheetApp.getActiveSpreadsheet(),cS=ss.getSheetByName('Colaboradores');
-  return{totalColaboradores:cS?Math.max(0,cS.getLastRow()-1):0,totalAreas:lst_(ss,'Areas').length,
+  var ss=SpreadsheetApp.getActiveSpreadsheet();var allU=readColaboradores_(ss);
+  return{totalColaboradores:allU.length,totalAreas:lst_(ss,'Areas').length,
     parametros:lst_(ss,'Parametros'),parametrosSupervisores:lst_(ss,'Parametros Supervisores'),
     areas:lst_(ss,'Areas'),sedes:lst_(ss,'Sedes')};
 }
@@ -302,11 +302,32 @@ function saveList_(b){
 }
 
 /* Helpers */
-function readCols_(sh){
+/**
+ * readColaboradores_: Lee de hoja USUARIOS (ya no de Colaboradores).
+ * Cada usuario activo es automáticamente un colaborador evaluable.
+ * Usa el email como ID único.
+ */
+function readColaboradores_(ss){
+  var sh=ss.getSheetByName('Usuarios');
   if(!sh||sh.getLastRow()<=1)return[];
-  var m=hm_(sh),d=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues();
-  if(m.id===undefined)m.id=0;if(m.nombre===undefined)m.nombre=1;if(m.area===undefined)m.area=2;if(m.foto===undefined)m.foto=3;if(m.email===undefined)m.email=4;if(m.sede===undefined)m.sede=5;
-  var out=[];for(var i=0;i<d.length;i++){var r=d[i];if(!r[m.id]&&!r[m.nombre])continue;out.push({id:r[m.id]||(i+1),nombre:String(r[m.nombre]||''),area:String(r[m.area]||''),fotoUrl:dUrl_(r[m.foto]),email:String(r[m.email]||''),sede:String(r[m.sede]||'')})}
+  var m=hm_(sh),d=sh.getDataRange().getValues();
+  if(m.email===undefined)return[];
+  var out=[];
+  for(var i=1;i<d.length;i++){
+    var r=d[i];
+    var activo=m.activo!==undefined?isT_(r[m.activo]):true;
+    if(!activo)continue;
+    var email=String(r[m.email]||'').trim();
+    if(!email)continue;
+    out.push({
+      id:email,
+      nombre:String(cv_(r,m,'nombre','')),
+      area:String(cv_(r,m,'area','')),
+      fotoUrl:dUrl_(cv_(r,m,'foto','')),
+      email:email,
+      sede:String(cv_(r,m,'sede',''))
+    });
+  }
   return out;
 }
 function readVotos_(ss){

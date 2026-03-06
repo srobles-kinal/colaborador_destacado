@@ -3,7 +3,7 @@
  */
 // ══════════════════════════════════════════════
 //  CONFIGURAR TU URL DE DEPLOY AQUÍ:
-const API_URL = 'https://script.google.com/macros/s/AKfycbyenO3RkiQVnz6gREWZGxXZ1CYnDQixZvosWHZM71CIRR9iTVvodMls2TJxrMzru5Df1g/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwx9Dw5NOkA9zWrSoM88lfGzfjw8vrQXErHZ0bq7jrPbEOkSKe3VSe7jOKtaILxGwvj0Q/exec';
 // ══════════════════════════════════════════════
 
 let _tk = null;
