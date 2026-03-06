@@ -5,640 +5,159 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Evaluación de Colaboradores</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --blue-900: #0c0566; --blue-800: #10069F; --blue-700: #2118b0;
-      --blue-100: #eeedfc; --blue-50: #f6f5ff;
-      --lime-500: #97D700; --lime-400: #a8e81c; --lime-100: #f0fad0;
-      --red-500: #e63946; --red-50: #fef2f2;
-      --green-600: #16a34a; --green-50: #f0fdf4;
-      --amber-500: #f59e0b;
-      --slate-900: #0f172a; --slate-700: #334155; --slate-500: #64748b;
-      --slate-400: #94a3b8; --slate-200: #e2e8f0; --slate-100: #f1f5f9; --slate-50: #f8fafc;
-      --white: #ffffff;
-      --r-sm: 8px; --r: 14px; --r-lg: 20px; --r-xl: 28px;
-      --sh-xs: 0 1px 2px rgba(15,23,42,0.04);
-      --sh-sm: 0 1px 4px rgba(15,23,42,0.06);
-      --sh-md: 0 4px 16px rgba(15,23,42,0.07);
-      --sh-lg: 0 10px 40px rgba(15,23,42,0.12);
-      --ease: cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Montserrat', sans-serif; background: var(--slate-50); color: var(--slate-900); min-height: 100vh; -webkit-font-smoothing: antialiased; }
-
-    /* ========== LOGIN SCREEN ========== */
-    .login-screen {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, var(--blue-800) 0%, var(--blue-900) 50%, #080340 100%);
-      padding: 20px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .login-screen::before {
-      content: ''; position: absolute; top: -100px; right: -80px; width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(151,215,0,0.12) 0%, transparent 70%); border-radius: 50%;
-    }
-
-    .login-screen::after {
-      content: ''; position: absolute; bottom: -60px; left: 10%; width: 300px; height: 300px;
-      background: radial-gradient(circle, rgba(151,215,0,0.06) 0%, transparent 70%); border-radius: 50%;
-    }
-
-    .login-box {
-      background: var(--white);
-      border-radius: var(--r-xl);
-      padding: 48px 40px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: var(--sh-lg);
-      position: relative;
-      z-index: 1;
-      text-align: center;
-    }
-
-    .login-logo {
-      width: 64px; height: 64px;
-      background: linear-gradient(135deg, var(--blue-800), var(--blue-700));
-      border-radius: 18px;
-      display: inline-grid; place-items: center;
-      color: var(--lime-500); font-size: 1.8rem; font-weight: 900;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 16px rgba(16,6,159,0.25);
-    }
-
-    .login-title { font-size: 1.6rem; font-weight: 800; color: var(--slate-900); margin-bottom: 4px; }
-    .login-sub { font-size: 0.85rem; color: var(--slate-500); margin-bottom: 32px; font-weight: 500; }
-
-    .login-field { margin-bottom: 18px; text-align: left; }
-    .login-label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--slate-500); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .login-input {
-      width: 100%; padding: 13px 16px;
-      border: 2px solid var(--slate-200); border-radius: 12px;
-      font-family: 'Montserrat', sans-serif; font-size: 0.92rem;
-      transition: all 0.2s;
-    }
-    .login-input:focus { border-color: var(--blue-800); outline: none; box-shadow: 0 0 0 3px rgba(16,6,159,0.1); }
-
-    .login-btn {
-      width: 100%; padding: 14px;
-      background: linear-gradient(135deg, var(--blue-800), var(--blue-700));
-      color: var(--white); border: none; border-radius: 12px;
-      font-family: 'Montserrat', sans-serif; font-size: 0.95rem; font-weight: 700;
-      cursor: pointer; transition: all 0.25s var(--ease);
-      box-shadow: 0 4px 16px rgba(16,6,159,0.2);
-      margin-top: 8px;
-    }
-    .login-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(16,6,159,0.3); }
-    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .login-error { color: var(--red-500); font-size: 0.82rem; font-weight: 600; margin-top: 14px; min-height: 20px; }
-
-    /* ========== CHANGE PASSWORD OVERLAY ========== */
-    .pwd-overlay {
-      display: none; position: fixed; inset: 0;
-      background: linear-gradient(135deg, var(--blue-800) 0%, #080340 100%);
-      z-index: 900; align-items: center; justify-content: center; padding: 20px;
-    }
-    .pwd-overlay.open { display: flex; }
-
-    /* ========== MAIN APP (hidden until login) ========== */
-    .app-shell { display: none; }
-    .app-shell.show { display: grid; grid-template-rows: auto auto 1fr; min-height: 100vh; }
-
-    /* TOPBAR */
-    .topbar { background: var(--white); border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 100; box-shadow: var(--sh-xs); }
-    .topbar-inner { max-width: 1360px; margin: 0 auto; padding: 0 clamp(16px,3vw,32px); height: 64px; display: flex; align-items: center; justify-content: space-between; }
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-logo { width: 38px; height: 38px; background: linear-gradient(135deg, var(--blue-800), var(--blue-700)); border-radius: 10px; display: grid; place-items: center; color: var(--lime-500); font-size: 1.1rem; font-weight: 900; }
-    .brand h1 { font-size: 0.95rem; font-weight: 700; }
-    .brand span { font-size: 0.68rem; color: var(--slate-500); font-weight: 500; }
-    .topbar-right { display: flex; align-items: center; gap: 10px; }
-    .chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; }
-    .chip-u { background: var(--blue-100); color: var(--blue-800); }
-    .chip-r { background: var(--lime-100); color: var(--blue-900); }
-    .chip-a { background: var(--slate-100); color: var(--slate-700); }
-    .btn-logout { padding: 7px 14px; background: none; border: 1.5px solid var(--slate-200); border-radius: 8px; font-family: 'Montserrat', sans-serif; font-size: 0.78rem; font-weight: 600; color: var(--slate-500); cursor: pointer; transition: all 0.2s; }
-    .btn-logout:hover { border-color: var(--red-500); color: var(--red-500); }
-
-    /* NAV */
-    .nav-w { background: var(--white); border-bottom: 1px solid var(--slate-200); }
-    .nav-inner { max-width: 1360px; margin: 0 auto; padding: 0 clamp(16px,3vw,32px); display: flex; gap: 4px; overflow-x: auto; }
-    .nav-btn { padding: 11px 18px; font-family: 'Montserrat', sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--slate-400); background: none; border: none; cursor: pointer; border-bottom: 2.5px solid transparent; margin-bottom: -1px; transition: color 0.2s; white-space: nowrap; }
-    .nav-btn:hover { color: var(--slate-700); }
-    .nav-btn.active { color: var(--blue-800); border-bottom-color: var(--lime-500); }
-
-    /* MAIN */
-    .main { max-width: 1360px; margin: 0 auto; padding: clamp(16px,3vw,32px); width: 100%; }
-    .panel { display: none; animation: fadeUp 0.35s var(--ease); }
-    .panel.active { display: block; }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* WELCOME */
-    .welcome { background: linear-gradient(135deg, var(--blue-800), var(--blue-900), #080340); border-radius: var(--r-xl); padding: 32px 36px; margin-bottom: 28px; position: relative; overflow: hidden; }
-    .welcome::before { content: ''; position: absolute; top: -50px; right: -30px; width: 220px; height: 220px; background: radial-gradient(circle, rgba(151,215,0,0.14) 0%, transparent 70%); border-radius: 50%; }
-    .welcome .line { display: inline-block; width: 42px; height: 3.5px; background: var(--lime-500); border-radius: 4px; margin-bottom: 14px; }
-    .welcome h2 { color: var(--white); font-size: clamp(1.3rem,2.5vw,1.7rem); font-weight: 800; margin-bottom: 6px; position: relative; z-index: 1; }
-    .welcome p { color: rgba(255,255,255,0.65); font-size: 0.88rem; line-height: 1.5; max-width: 520px; position: relative; z-index: 1; }
-
-    /* STATS */
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 24px; }
-    .st { background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--r); padding: 20px; box-shadow: var(--sh-xs); transition: all 0.25s var(--ease); position: relative; overflow: hidden; }
-    .st:hover { box-shadow: var(--sh-md); transform: translateY(-2px); }
-    .st::before { content: ''; position: absolute; top: 0; left: 0; width: 3.5px; height: 100%; }
-    .st.sb::before { background: var(--blue-800); } .st.sl::before { background: var(--lime-500); } .st.sa::before { background: var(--amber-500); }
-    .st-i { font-size: 1.3rem; margin-bottom: 6px; }
-    .st-n { font-size: 1.8rem; font-weight: 800; color: var(--slate-900); line-height: 1; margin-bottom: 3px; }
-    .st-l { font-size: 0.7rem; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.06em; }
-
-    /* TOOLBAR */
-    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
-    .search { flex: 1; min-width: 200px; position: relative; }
-    .search input { width: 100%; padding: 10px 14px 10px 38px; border: 1.5px solid var(--slate-200); border-radius: var(--r); font-family: 'Montserrat', sans-serif; font-size: 0.85rem; background: var(--white); transition: all 0.2s; }
-    .search input:focus { border-color: var(--blue-800); outline: none; }
-    .search::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
-    .filter-s { padding: 10px 16px; border: 1.5px solid var(--slate-200); border-radius: var(--r); font-family: 'Montserrat', sans-serif; font-size: 0.82rem; font-weight: 500; background: var(--white); appearance: none; cursor: pointer; }
-
-    /* AREA SECTIONS */
-    .area-sec { margin-bottom: 16px; animation: secIn 0.4s var(--ease) both; }
-    @keyframes secIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .area-h { background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--r-lg); padding: 16px 22px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s; box-shadow: var(--sh-xs); user-select: none; }
-    .area-h:hover { box-shadow: var(--sh-md); }
-    .area-h.open { border-radius: var(--r-lg) var(--r-lg) 0 0; border-bottom-color: transparent; }
-    .area-h-l { display: flex; align-items: center; gap: 12px; }
-    .area-ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-size: 1.05rem; font-weight: 800; }
-    .area-nm { font-weight: 700; font-size: 0.92rem; }
-    .area-ct { font-size: 0.73rem; color: var(--slate-400); font-weight: 500; }
-    .area-chev { font-size: 1rem; color: var(--slate-400); transition: transform 0.3s var(--ease); }
-    .area-h.open .area-chev { transform: rotate(180deg); }
-    .area-bd { display: none; background: var(--white); border: 1px solid var(--slate-200); border-top: none; border-radius: 0 0 var(--r-lg) var(--r-lg); padding: 18px 22px 22px; }
-    .area-bd.open { display: block; animation: bdIn 0.3s var(--ease); }
-    @keyframes bdIn { from { opacity: 0; } to { opacity: 1; } }
-
-    /* COLAB CARDS */
-    .cg { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-    .cc { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--r); padding: 18px; display: flex; gap: 12px; transition: all 0.25s var(--ease); position: relative; }
-    .cc:hover { background: var(--white); border-color: var(--blue-100); box-shadow: var(--sh-md); transform: translateY(-2px); }
-    .cc.done { opacity: 0.45; }
-    .cc.done .done-b { display: flex; }
-    .done-b { display: none; position: absolute; top: 10px; right: 12px; background: var(--green-50); color: var(--green-600); font-size: 0.67rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; border: 1px solid rgba(22,163,74,0.15); align-items: center; gap: 3px; }
-    .av { width: 46px; height: 46px; border-radius: 12px; object-fit: cover; background: var(--slate-200); flex-shrink: 0; }
-    .ci { flex: 1; min-width: 0; }
-    .cn { font-weight: 700; font-size: 0.88rem; margin-bottom: 2px; }
-    .cm { font-size: 0.72rem; color: var(--slate-400); margin-bottom: 8px; }
-    .cs-row { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
-    .cs { font-size: 1.15rem; font-weight: 800; color: var(--blue-800); }
-    .bar-bg { flex: 1; height: 5px; background: var(--slate-200); border-radius: 5px; overflow: hidden; }
-    .bar-f { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--lime-500), var(--lime-400)); transition: width 0.5s var(--ease); }
-    .btn-ev { width: 100%; padding: 8px; background: var(--blue-800); color: var(--white); border: none; border-radius: var(--r-sm); font-family: 'Montserrat', sans-serif; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn-ev:hover { background: var(--blue-700); transform: translateY(-1px); }
-
-    /* MODAL */
-    .mo-bg { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.4); backdrop-filter: blur(5px); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
-    .mo-bg.open { display: flex; }
-    .mo { background: var(--white); border-radius: var(--r-xl); width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; box-shadow: var(--sh-lg); animation: moPop 0.3s var(--ease); }
-    @keyframes moPop { from { opacity: 0; transform: scale(0.95) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-    .mo-top { padding: 28px 28px 0; display: flex; gap: 16px; align-items: flex-start; }
-    .mo-avatar { width: 72px; height: 72px; border-radius: 18px; object-fit: cover; background: var(--slate-200); flex-shrink: 0; border: 3px solid var(--blue-100); }
-    .mo-info { flex: 1; }
-    .mo-name { font-size: 1.2rem; font-weight: 800; color: var(--slate-900); margin-bottom: 2px; }
-    .mo-meta { font-size: 0.8rem; color: var(--slate-500); font-weight: 500; }
-    .mo-x { width: 34px; height: 34px; display: grid; place-items: center; border: none; background: var(--slate-100); border-radius: 10px; cursor: pointer; font-size: 1rem; color: var(--slate-400); flex-shrink: 0; transition: all 0.2s; }
-    .mo-x:hover { background: var(--red-50); color: var(--red-500); }
-    .mo-body { padding: 22px 28px; }
-    .rb { margin-bottom: 18px; }
-    .rl { font-size: 0.82rem; font-weight: 700; color: var(--slate-700); margin-bottom: 8px; }
-    .rr { display: flex; gap: 5px; flex-wrap: wrap; }
-    .rb-b { width: 36px; height: 36px; display: grid; place-items: center; border: 1.5px solid var(--slate-200); border-radius: 9px; background: var(--white); cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--slate-400); transition: all 0.15s; }
-    .rb-b:hover { border-color: var(--blue-100); background: var(--blue-50); color: var(--blue-800); }
-    .rb-b.on { background: var(--lime-500); border-color: var(--lime-500); color: var(--blue-900); transform: scale(1.1); box-shadow: 0 2px 6px rgba(151,215,0,0.3); }
-    .fg { margin-bottom: 18px; }
-    .fl { display: block; font-size: 0.76rem; font-weight: 600; color: var(--slate-500); margin-bottom: 5px; }
-    .fta { width: 100%; padding: 10px 12px; border: 1.5px solid var(--slate-200); border-radius: var(--r); font-family: 'Montserrat', sans-serif; font-size: 0.85rem; resize: vertical; min-height: 70px; }
-    .fta:focus { border-color: var(--blue-800); outline: none; }
-    .mo-foot { padding: 0 28px 24px; }
-    .btn-sub { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--blue-800), var(--blue-700)); color: var(--white); border: none; border-radius: var(--r); font-family: 'Montserrat', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 16px rgba(16,6,159,0.2); }
-    .btn-sub:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(16,6,159,0.3); }
-    .btn-sub:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* DASHBOARD & CHARTS */
-    .ch-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .card { background: var(--white); border: 1px solid var(--slate-200); border-radius: var(--r-lg); padding: 22px 26px; box-shadow: var(--sh-xs); }
-    .card + .card { margin-top: 14px; }
-    .card-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    .card-t { font-size: 1.05rem; font-weight: 700; }
-    canvas { max-height: 260px; }
-
-    /* TABLE */
-    .tw { overflow-x: auto; border-radius: var(--r); }
-    table { width: 100%; border-collapse: collapse; }
-    thead th { background: var(--blue-800); color: var(--white); padding: 10px 14px; font-size: 0.73rem; font-weight: 700; text-align: left; text-transform: uppercase; letter-spacing: 0.04em; }
-    thead th:first-child { border-radius: var(--r-sm) 0 0 0; } thead th:last-child { border-radius: 0 var(--r-sm) 0 0; }
-    tbody td { padding: 10px 14px; border-bottom: 1px solid var(--slate-100); font-size: 0.83rem; color: var(--slate-700); }
-    tbody tr:hover { background: var(--slate-50); }
-
-    /* ADMIN */
-    .adm-it { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-    .adm-in { flex: 1; padding: 9px 12px; border: 1.5px solid var(--slate-200); border-radius: var(--r-sm); font-family: 'Montserrat', sans-serif; font-size: 0.85rem; }
-    .adm-in:focus { border-color: var(--blue-800); outline: none; }
-    .bd-sm { width: 32px; height: 32px; display: grid; place-items: center; border: 1.5px solid var(--red-500); border-radius: 7px; background: transparent; color: var(--red-500); cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
-    .bd-sm:hover { background: var(--red-500); color: var(--white); }
-    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 9px 18px; border: none; border-radius: var(--r-sm); font-family: 'Montserrat', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn:disabled { opacity: 0.5; } .bp { background: var(--blue-800); color: var(--white); } .bp:hover { background: var(--blue-700); }
-    .ba { background: var(--lime-500); color: var(--blue-900); } .ba:hover { filter: brightness(0.93); }
-    .bo { background: var(--white); border: 1.5px solid var(--slate-200); color: var(--slate-700); } .bo:hover { border-color: var(--blue-800); }
-
-    /* TOAST */
-    .tz { position: fixed; top: 76px; right: 16px; z-index: 700; display: flex; flex-direction: column; gap: 7px; pointer-events: none; }
-    .tt { padding: 12px 18px; border-radius: var(--r); font-size: 0.82rem; font-weight: 600; box-shadow: var(--sh-lg); animation: ts 0.3s var(--ease); max-width: 360px; pointer-events: auto; }
-    .tt-ok { background: var(--green-50); color: var(--green-600); border: 1px solid rgba(22,163,74,0.2); }
-    .tt-err { background: var(--red-50); color: var(--red-500); border: 1px solid rgba(230,57,70,0.2); }
-    .tt-info { background: var(--blue-50); color: var(--blue-800); border: 1px solid rgba(16,6,159,0.12); }
-    @keyframes ts { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-
-    .empty { text-align: center; padding: 40px 16px; color: var(--slate-400); }
-    .empty-i { font-size: 2.2rem; margin-bottom: 10px; } .empty-t { font-size: 0.9rem; font-weight: 500; }
-    .loader { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px; color: var(--slate-400); font-size: 0.85rem; }
-    .spin { width: 18px; height: 18px; border: 2.5px solid var(--slate-200); border-top-color: var(--blue-800); border-radius: 50%; animation: sp 0.6s linear infinite; }
-    @keyframes sp { to { transform: rotate(360deg); } }
-    .hidden { display: none !important; }
-
-    @media (max-width: 768px) {
-      .topbar-right .chip-u, .topbar-right .chip-a { display: none; }
-      .cg { grid-template-columns: 1fr; } .ch-row { grid-template-columns: 1fr; }
-      .toolbar { flex-direction: column; } .search { min-width: 100%; }
-      .login-box { padding: 36px 24px; }
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" defer></script>
 </head>
 <body>
 
-  <!-- ========== LOGIN ========== -->
-  <div class="login-screen" id="loginScreen">
+  <!-- LOGIN -->
+  <div class="login-wrap" id="loginScreen">
     <div class="login-box">
-      <div class="login-logo">M</div>
-      <div class="login-title">Bienvenido</div>
+      <img class="login-avatar" id="loginAvatar" src="" alt="">
+      <div class="login-logo" id="loginLogoIcon">M</div>
+      <div class="login-h">Bienvenido</div>
       <div class="login-sub">Sistema de Evaluación · Municipalidad de Guatemala</div>
       <div class="login-field">
-        <label class="login-label">Usuario (email)</label>
-        <input type="email" class="login-input" id="loginUser" placeholder="tu@email.com" autocomplete="username">
+        <label class="login-lbl">Usuario (email)</label>
+        <input type="email" class="login-in" id="loginUser" placeholder="tu@correo.com" autocomplete="username">
       </div>
       <div class="login-field">
-        <label class="login-label">Contraseña</label>
-        <input type="password" class="login-input" id="loginPass" placeholder="••••••" autocomplete="current-password">
+        <label class="login-lbl">Contraseña</label>
+        <input type="password" class="login-in has-toggle" id="loginPass" placeholder="••••••" autocomplete="current-password">
+        <button type="button" class="pwd-toggle">👁️</button>
       </div>
       <button class="login-btn" id="loginBtn" onclick="App.login()">Ingresar</button>
-      <div class="login-error" id="loginErr"></div>
+      <div class="login-err" id="loginErr"></div>
     </div>
   </div>
 
-  <!-- ========== CHANGE PASSWORD ========== -->
-  <div class="pwd-overlay" id="pwdOverlay">
+  <!-- CAMBIAR CONTRASEÑA -->
+  <div class="pwd-ov" id="pwdOv">
     <div class="login-box">
-      <div class="login-logo">🔑</div>
-      <div class="login-title">Cambiar Contraseña</div>
-      <div class="login-sub">Es tu primer ingreso. Por seguridad, cambiá tu contraseña.</div>
+      <img class="login-avatar" id="pwdAvatar" src="" alt="">
+      <div class="login-logo">🔐</div>
+      <div class="login-h" id="pwdWelcome">¡Hola!</div>
+      <div class="login-sub">Es tu primer ingreso. Elegí una nueva contraseña segura para continuar.</div>
+      <div class="pwd-steps"><div class="pwd-dot active"></div><div class="pwd-dot"></div></div>
       <div class="login-field">
-        <label class="login-label">Nueva contraseña (mínimo 6 caracteres)</label>
-        <input type="password" class="login-input" id="pwdNew" placeholder="Nueva contraseña">
+        <label class="login-lbl">Nueva contraseña</label>
+        <input type="password" class="login-in has-toggle" id="pwdNew" placeholder="Mínimo 6 caracteres">
+        <button type="button" class="pwd-toggle">👁️</button>
+        <div class="pwd-strength" id="pwdBar"></div>
+        <div class="pwd-hint">Usá letras, números y símbolos para mayor seguridad</div>
       </div>
       <div class="login-field">
-        <label class="login-label">Confirmar contraseña</label>
-        <input type="password" class="login-input" id="pwdConfirm" placeholder="Repetir contraseña">
+        <label class="login-lbl">Confirmar contraseña</label>
+        <input type="password" class="login-in has-toggle" id="pwdConfirm" placeholder="Repetir contraseña">
+        <button type="button" class="pwd-toggle">👁️</button>
       </div>
-      <button class="login-btn" id="pwdBtn" onclick="App.changePassword()">Guardar Contraseña</button>
-      <div class="login-error" id="pwdErr"></div>
+      <button class="login-btn" id="pwdBtn" onclick="App.changePwd()">Guardar Contraseña</button>
+      <div class="login-err" id="pwdErr"></div>
     </div>
   </div>
 
-  <!-- ========== APP SHELL ========== -->
-  <div class="app-shell" id="appShell">
-    <header class="topbar">
-      <div class="topbar-inner">
-        <div class="brand">
-          <div class="brand-logo">M</div>
-          <div><h1>Evaluación de Colaboradores</h1><span>Municipalidad de Guatemala</span></div>
-        </div>
-        <div class="topbar-right">
-          <span class="chip chip-u" id="chipUser">—</span>
-          <span class="chip chip-r" id="chipRole">—</span>
-          <span class="chip chip-a" id="chipArea">—</span>
-          <button class="btn-logout" onclick="App.logout()">Salir</button>
+  <!-- APP -->
+  <div class="app" id="appShell">
+    <header class="top">
+      <div class="top-in">
+        <div class="br"><div class="br-logo">M</div><div><h1>Evaluación de Colaboradores</h1><span>Municipalidad de Guatemala</span></div></div>
+        <div class="top-r">
+          <img class="top-avatar" id="topAvatar" src="" alt="">
+          <span class="ch ch-u" id="chipU">—</span>
+          <span class="ch ch-r" id="chipR">—</span>
+          <span class="ch ch-a" id="chipA">—</span>
+          <button class="btn-out" onclick="App.logout()">Cerrar sesión</button>
         </div>
       </div>
     </header>
 
-    <nav class="nav-w">
-      <div class="nav-inner">
-        <button class="nav-btn active" data-tab="votacion">🗳️ Votación</button>
-        <button class="nav-btn" data-tab="dashboard">📊 Dashboard</button>
-        <button class="nav-btn" data-tab="reportes">📈 Reportes</button>
-        <button class="nav-btn hidden" data-tab="admin" id="navAdm">⚙️ Admin</button>
+    <nav class="nv">
+      <div class="nv-in">
+        <button class="nb on" data-tab="vot">🗳️ Votación</button>
+        <button class="nb hidden" data-tab="dash" id="navDash">📊 Dashboard</button>
+        <button class="nb hidden" data-tab="rep" id="navRep">📈 Reportes</button>
+        <button class="nb hidden" data-tab="adm" id="navAdm">⚙️ Administración</button>
       </div>
     </nav>
 
-    <div class="main">
-      <section id="p-vot" class="panel active">
-        <div class="welcome"><div class="line"></div><h2 id="welc">¡Hola!</h2><p>Evalúa a tus compañeros reconociendo su esfuerzo. Tus evaluaciones son confidenciales.</p></div>
-        <div class="stats" id="vSt"></div>
-        <div class="toolbar">
-          <div class="search"><input type="text" id="fS" placeholder="Buscar colaborador..."></div>
-          <select class="filter-s" id="fSede"><option value="">Todas las sedes</option></select>
+    <div class="mn">
+      <!-- Votación -->
+      <section id="p-vot" class="pn on">
+        <div class="wlc"><div class="wlc-line"></div><h2 id="welc">¡Hola!</h2><p>Evalúa a tus compañeros reconociendo su esfuerzo. Tus evaluaciones son confidenciales.</p></div>
+        <div class="sts" id="vSt"></div>
+        <div class="tb">
+          <div class="sr"><input type="text" id="fS" placeholder="Buscar colaborador..."></div>
+          <select class="fp" id="fSede"><option value="">Todas las sedes</option></select>
         </div>
         <div id="areaCont"><div class="loader"><div class="spin"></div> Cargando...</div></div>
       </section>
 
-      <section id="p-dash" class="panel">
-        <div class="stats" id="dSt"></div>
-        <div class="ch-row">
-          <div class="card"><div class="card-h"><span class="card-t">Distribución</span></div><canvas id="cD"></canvas></div>
-          <div class="card"><div class="card-h"><span class="card-t">Tendencia</span></div><canvas id="cT"></canvas></div>
+      <!-- Dashboard -->
+      <section id="p-dash" class="pn">
+        <div class="sts" id="dSt"></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏆 Mejor Promedio por Área</span></div><div class="top-cards" id="topAreaCont"></div></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏢 Mejor Promedio por Sede</span></div><div class="top-cards" id="topSedeCont"></div></div>
+        <div class="ch-r">
+          <div class="cd"><div class="cd-h"><span class="cd-t">Distribución</span></div><canvas id="cD"></canvas></div>
+          <div class="cd"><div class="cd-h"><span class="cd-t">Tendencia</span></div><canvas id="cT"></canvas></div>
         </div>
-        <div class="card"><div class="card-h"><span class="card-t">Por Día</span></div><div class="tw"><table id="tT"></table></div></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">Por Día</span></div><div class="tw"><table id="tT"></table></div></div>
       </section>
 
-      <section id="p-rep" class="panel">
-        <div class="card">
-          <div class="card-h"><span class="card-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 Excel</button><button class="btn bo" onclick="App.expP()">📄 PDF</button></div></div>
-          <div class="tw"><table id="tR"></table></div>
-        </div>
+      <!-- Reportes -->
+      <section id="p-rep" class="pn">
+        <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 Excel</button><button class="btn bo" onclick="App.expP()">📄 PDF</button></div></div><div class="tw"><table id="tR"></table></div></div>
       </section>
 
-      <section id="p-admin" class="panel">
-        <div class="stats" id="aSt"></div>
-        <div class="card" style="margin-bottom:14px"><div class="card-h"><span class="card-t">Parámetros Generales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:10px" onclick="App.adm.save('p')">💾 Guardar</button></div>
-        <div class="card" style="margin-bottom:14px"><div class="card-h"><span class="card-t">Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:10px" onclick="App.adm.save('ps')">💾 Guardar</button></div>
-        <div class="card" style="margin-bottom:14px"><div class="card-h"><span class="card-t">Áreas</span><button class="btn ba" onclick="App.adm.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:10px" onclick="App.adm.save('ar')">💾 Guardar</button></div>
-        <div class="card"><div class="card-h"><span class="card-t">Sedes</span><button class="btn ba" onclick="App.adm.add('se')">+</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:10px" onclick="App.adm.save('se')">💾 Guardar</button></div>
+      <!-- Admin -->
+      <section id="p-adm" class="pn">
+        <div class="sts" id="aSt"></div>
+        <div class="cd" style="margin-bottom:14px">
+          <div class="cd-h"><span class="cd-t">👤 Gestión de Usuarios</span><button class="btn ba" onclick="App.openNewUser()">+ Nuevo Usuario</button></div>
+          <div class="tw"><table class="usr-tbl"><thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Área</th><th>Sede</th><th>Acciones</th></tr></thead><tbody id="usrBody"></tbody></table></div>
+        </div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Generales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('p')">💾 Guardar</button></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ps')">💾 Guardar</button></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.adm.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ar')">💾 Guardar</button></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">🏢 Sedes</span><button class="btn ba" onclick="App.adm.add('se')">+</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('se')">💾 Guardar</button></div>
       </section>
     </div>
   </div>
 
-  <!-- EVAL MODAL -->
+  <!-- MODAL: EVALUAR -->
   <div class="mo-bg" id="evalOv">
     <div class="mo">
-      <div class="mo-top">
-        <img class="mo-avatar" id="evalFoto" src="" alt="">
-        <div class="mo-info"><div class="mo-name" id="evalNm">—</div><div class="mo-meta" id="evalMt">—</div></div>
-        <button class="mo-x" onclick="App.closeEval()">✕</button>
+      <div class="mo-top"><img class="mo-av" id="evalFoto" src="" alt=""><div class="mo-inf"><div class="mo-nm" id="evalNm">—</div><div class="mo-mt" id="evalMt">—</div></div><button class="mo-x" onclick="App.closeEval()">✕</button></div>
+      <div class="mo-bd" id="evalBd"></div>
+      <div class="mo-bd" style="padding-top:0"><div class="fg"><label class="fl">Comentario (opcional)</label><textarea class="fta" id="evalCom" placeholder="Comparte tu experiencia..."></textarea></div></div>
+      <div class="mo-ft"><button class="btn-sub" id="evalBtn" onclick="App.submitEval()">Enviar Evaluación</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVO USUARIO -->
+  <div class="mo-bg" id="nuOv">
+    <div class="mo">
+      <div class="mo-top" style="padding-bottom:0"><div class="mo-inf"><div class="mo-nm">Nuevo Usuario</div><div class="mo-mt">Completá los datos</div></div><button class="mo-x" onclick="App.closeNewUser()">✕</button></div>
+      <div class="mo-bd">
+        <div class="fg"><label class="fl">Email</label><input class="login-in" id="nuEmail" placeholder="usuario@correo.com"></div>
+        <div class="fg"><label class="fl">Nombre completo</label><input class="login-in" id="nuNombre" placeholder="Nombre Apellido"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="fg"><label class="fl">Rol</label><select class="fp" id="nuRol" style="width:100%"><option value="votante">Votante</option><option value="evaluado">Evaluado</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
+          <div class="fg"><label class="fl">Área</label><input class="login-in" id="nuArea" placeholder="Ej: TI"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="fg"><label class="fl">Sede</label><input class="login-in" id="nuSede" placeholder="Ej: Álamos"></div>
+          <div class="fg"><label class="fl">Contraseña inicial</label><input class="login-in" type="password" id="nuPwd" placeholder="Temporal"></div>
+        </div>
+        <div class="fg"><label class="fl">Permisos adicionales (separados por coma)</label><input class="login-in" id="nuPermisos" placeholder="dashboard,reportes"><div class="pwd-hint">Opciones: votar, dashboard, reportes, admin, usuarios</div></div>
       </div>
-      <div class="mo-body" id="evalBd"></div>
-      <div class="mo-body" style="padding-top:0"><div class="fg"><label class="fl">Comentario (opcional)</label><textarea class="fta" id="evalCom" placeholder="Comparte tu experiencia..."></textarea></div></div>
-      <div class="mo-foot"><button class="btn-sub" id="evalBtn" onclick="App.submitEval()">Enviar Evaluación</button></div>
+      <div class="mo-ft"><button class="btn-sub" onclick="App.saveNewUser()">Crear Usuario</button></div>
     </div>
   </div>
 
   <div class="tz" id="toasts"></div>
-
-  <!-- ======================================== JS ======================================== -->
-  <script>
-    // ═══════════════════════════════════════════
-    // CONFIGURACIÓN — EDITAR AQUÍ TU URL DE API
-    // ═══════════════════════════════════════════
-    const API_URL = 'https://script.google.com/macros/s/AKfycbzRzLEDRQ0vqn0KHFWFpdAYvUPpKHLsV3-YvsMeh9i91zWKAZscezSSjIIyj_qexuMLqg/exec';
-    // ═══════════════════════════════════════════
-
-    let TOKEN = null, USER = null, D = null, EV = { id:null, nombre:'', foto:'', ratings:{} }, CHS = {}, ADM = { p:[], ps:[], ar:[], se:[] };
-
-    const COLS = [
-      {bg:'#eef2ff',br:'#818cf8',ic:'#4f46e5'},{bg:'#ecfdf5',br:'#34d399',ic:'#059669'},
-      {bg:'#fffbeb',br:'#fbbf24',ic:'#d97706'},{bg:'#fef2f2',br:'#f87171',ic:'#dc2626'},
-      {bg:'#f0f9ff',br:'#38bdf8',ic:'#0284c7'},{bg:'#fdf4ff',br:'#c084fc',ic:'#9333ea'},
-    ];
-    function gc(i){return COLS[i%COLS.length];}
-
-    // CORS FIX: Todo va por POST con text/plain para evitar preflight
-    async function apiCall(action, extraData={}) {
-      const payload = JSON.stringify({ action, token: TOKEN, ...extraData });
-      const r = await fetch(API_URL, {
-        method: 'POST',
-        body: payload
-        // NO Content-Type header = browser sends text/plain = NO preflight
-      });
-      // Apps Script redirects (302) — fetch follows automatically
-      const j = await r.json();
-      if (j.status === 'error') throw new Error(j.message || j.error || 'Error');
-      return j;
-    }
-
-    function toast(m,t='info'){const e=document.createElement('div');e.className=`tt tt-${t}`;e.textContent=m;document.getElementById('toasts').appendChild(e);setTimeout(()=>{e.style.opacity='0';e.style.transition='opacity 0.3s';setTimeout(()=>e.remove(),300);},3500);}
-
-    const fb=c=>`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'><rect fill='%23e2e8f0' width='50' height='50' rx='8'/><text x='50%25' y='56%25' dominant-baseline='middle' text-anchor='middle' fill='%2364748b' font-size='18' font-family='sans-serif'>${(c||'?').charAt(0)}</text></svg>`;
-
-    // NAV
-    document.querySelectorAll('.nav-btn').forEach(b=>{b.addEventListener('click',()=>{
-      document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-      b.classList.add('active');document.getElementById(`p-${b.dataset.tab}`).classList.add('active');
-      if(b.dataset.tab==='dashboard') App.loadDash(); if(b.dataset.tab==='reportes') App.loadRep(); if(b.dataset.tab==='admin') App.loadAdm();
-    });});
-
-    // Enter keys
-    document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter') App.login();});
-    document.getElementById('pwdConfirm').addEventListener('keydown',e=>{if(e.key==='Enter') App.changePassword();});
-
-    window.App = {
-      // ── LOGIN ──
-      async login(){
-        const u=document.getElementById('loginUser').value.trim(), p=document.getElementById('loginPass').value;
-        if(!u||!p){document.getElementById('loginErr').textContent='Completá ambos campos';return;}
-        const btn=document.getElementById('loginBtn'); btn.disabled=true; btn.textContent='Ingresando...';
-        try{
-          const res=await apiCall('login',{usuario:u,password:p});
-          if(res.success){
-            TOKEN=res.token; USER=res.usuario;
-            if(USER.primerIngreso){document.getElementById('pwdOverlay').classList.add('open');}
-            else{this.startApp();}
-          }else{document.getElementById('loginErr').textContent=res.message||'Error al ingresar';}
-        }catch(e){document.getElementById('loginErr').textContent=e.message;}
-        btn.disabled=false; btn.textContent='Ingresar';
-      },
-
-      async changePassword(){
-        const n=document.getElementById('pwdNew').value, c=document.getElementById('pwdConfirm').value;
-        if(n.length<6){document.getElementById('pwdErr').textContent='Mínimo 6 caracteres';return;}
-        if(n!==c){document.getElementById('pwdErr').textContent='Las contraseñas no coinciden';return;}
-        const btn=document.getElementById('pwdBtn'); btn.disabled=true; btn.textContent='Guardando...';
-        try{
-          const res=await apiCall('cambiarPassword',{token:TOKEN,nuevaPassword:n});
-          if(res.success){document.getElementById('pwdOverlay').classList.remove('open');toast('Contraseña actualizada','ok');this.startApp();}
-          else{document.getElementById('pwdErr').textContent=res.message;}
-        }catch(e){document.getElementById('pwdErr').textContent=e.message;}
-        btn.disabled=false; btn.textContent='Guardar Contraseña';
-      },
-
-      async logout(){
-        try{await apiCall('logout',{token:TOKEN});}catch(e){}
-        TOKEN=null; USER=null; D=null;
-        document.getElementById('appShell').classList.remove('show');
-        document.getElementById('loginScreen').style.display='flex';
-        document.getElementById('loginPass').value='';
-        document.getElementById('loginErr').textContent='';
-      },
-
-      async startApp(){
-        document.getElementById('loginScreen').style.display='none';
-        document.getElementById('appShell').classList.add('show');
-        try{D=(await apiCall('getAllData')).data;this.render();toast('Datos cargados','ok');}catch(e){toast(e.message,'err');}
-      },
-
-      render(){
-        if(!D) return;
-        document.getElementById('chipUser').textContent=USER.nombre||USER.email.split('@')[0];
-        document.getElementById('chipRole').textContent=USER.rol;
-        document.getElementById('chipArea').textContent=USER.area||'Todas';
-        document.getElementById('welc').textContent=`¡Hola, ${USER.nombre||USER.email.split('@')[0]}!`;
-        if(USER.rol==='admin'||USER.rol==='supervisor') document.getElementById('navAdm').classList.remove('hidden');
-        const a=D.analytics||{};
-        document.getElementById('vSt').innerHTML=`
-          <div class="st sb"><div class="st-i">👥</div><div class="st-n">${D.colaboradores?.length||0}</div><div class="st-l">Colaboradores</div></div>
-          <div class="st sl"><div class="st-i">📝</div><div class="st-n">${a.totalVotos||0}</div><div class="st-l">Evaluaciones</div></div>
-          <div class="st sa"><div class="st-i">📊</div><div class="st-n">${a.tasaParticipacion||0}%</div><div class="st-l">Participación</div></div>`;
-        this.renderFilters(); this.renderAreas();
-      },
-
-      renderFilters(){
-        const s=document.getElementById('fSede'); s.innerHTML='<option value="">Todas las sedes</option>';
-        (D.sedes||[]).forEach(x=>{s.innerHTML+=`<option value="${x}">${x}</option>`;});
-        s.onchange=()=>this.renderAreas(); document.getElementById('fS').oninput=()=>this.renderAreas();
-      },
-
-      renderAreas(){
-        const ct=document.getElementById('areaCont'), search=document.getElementById('fS').value.toLowerCase(), sede=document.getElementById('fSede').value;
-        let cl=D.colaboradores||[];
-        if(sede) cl=cl.filter(x=>x.sede===sede);
-        if(search) cl=cl.filter(x=>x.nombre.toLowerCase().includes(search));
-        const g={};cl.forEach(x=>{const a=x.area||'Sin Área';if(!g[a])g[a]=[];g[a].push(x);});
-        const nm=Object.keys(g).sort();
-        if(!nm.length){ct.innerHTML='<div class="empty"><div class="empty-i">🔍</div><div class="empty-t">No se encontraron colaboradores</div></div>';return;}
-        ct.innerHTML=nm.map((area,idx)=>{
-          const ls=g[area],col=gc(idx),dn=ls.filter(x=>D.evaluacionesUnicas?.[`${USER.email}|${x.id}`]).length,pn=ls.length-dn;
-          return `<div class="area-sec" style="animation-delay:${idx*0.05}s">
-            <div class="area-h open" onclick="App.tog(this)" data-a="${area}"><div class="area-h-l">
-              <div class="area-ic" style="background:${col.bg};color:${col.ic};border:1.5px solid ${col.br}">${area.charAt(0)}</div>
-              <div><div class="area-nm">${area}</div><div class="area-ct">${ls.length} colab. · ${pn>0?pn+' pendiente'+(pn>1?'s':''):'✓ Completo'}</div></div>
-            </div><span class="area-chev">▼</span></div>
-            <div class="area-bd open" id="bd-${area.replace(/\s/g,'_')}">${this.renderGrid(ls)}</div>
-          </div>`;
-        }).join('');
-      },
-
-      renderGrid(ls){
-        return `<div class="cg">${ls.map(c=>{
-          const k=`${USER.email}|${c.id}`,dn=D.evaluacionesUnicas?.[k],pm=D.promedios?.[String(c.id)],
-          pv=pm?parseFloat(pm):0,pt=pm?pv.toFixed(1):'—',bw=pm?(pv/10*100):0;
-          return `<div class="cc ${dn?'done':''}"><div class="done-b">✓ Evaluado</div>
-            <img class="av" src="${c.fotoUrl||fb(c.nombre)}" onerror="this.src='${fb(c.nombre)}'">
-            <div class="ci"><div class="cn">${c.nombre}</div><div class="cm">${c.sede||''}</div>
-              <div class="cs-row"><span class="cs">${pt}</span><div class="bar-bg"><div class="bar-f" style="width:${bw}%"></div></div></div>
-              ${!dn?`<button class="btn-ev" onclick="App.openEval('${c.id}',\`${c.nombre}\`,\`${c.area||''}\`,\`${c.sede||''}\`,\`${c.fotoUrl||''}\`)">Evaluar</button>`:''}
-            </div></div>`;
-        }).join('')}</div>`;
-      },
-
-      tog(h){h.classList.toggle('open');const b=document.getElementById('bd-'+h.dataset.a.replace(/\s/g,'_'));if(b)b.classList.toggle('open');},
-
-      // ── EVAL MODAL ──
-      openEval(id,nombre,area,sede,foto){
-        EV={id,nombre,ratings:{}};
-        document.getElementById('evalNm').textContent=nombre;
-        document.getElementById('evalMt').textContent=[area,sede].filter(Boolean).join(' · ');
-        document.getElementById('evalFoto').src=foto||fb(nombre);
-        document.getElementById('evalFoto').onerror=function(){this.src=fb(nombre);};
-        document.getElementById('evalCom').value='';
-        document.getElementById('evalBd').innerHTML=(D.parametros||[]).map(p=>`
-          <div class="rb"><div class="rl">${p}</div><div class="rr">
-            ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="rb-b" data-v="${n}" onclick="App.rate(this,'${p.replace(/'/g,"\\'")}',${n})">${n}</button>`).join('')}
-          </div></div>`).join('');
-        document.getElementById('evalOv').classList.add('open');
-      },
-
-      rate(b,p,v){EV.ratings[p]=v;b.parentElement.querySelectorAll('.rb-b').forEach(x=>x.classList.toggle('on',parseInt(x.dataset.v)<=v));},
-      closeEval(){document.getElementById('evalOv').classList.remove('open');},
-
-      async submitEval(){
-        const params=D.parametros||[],miss=params.filter(p=>!EV.ratings[p]);
-        if(miss.length){toast('Falta: '+miss.join(', '),'err');return;}
-        const btn=document.getElementById('evalBtn');btn.disabled=true;btn.textContent='Enviando...';
-        try{
-          const res=await apiCall('guardarVotos',{
-            token:TOKEN,evaluadoId:EV.id,evaluadoNombre:EV.nombre,
-            calificaciones:params.map(p=>({parametro:p,puntuacion:EV.ratings[p]})),
-            sede:document.getElementById('fSede').value||'',comentario:document.getElementById('evalCom').value
-          });
-          if(res.success){toast(res.message,'ok');D.evaluacionesUnicas[`${USER.email}|${EV.id}`]=true;if(res.nuevoPromedio)D.promedios[String(EV.id)]=res.nuevoPromedio;this.renderAreas();this.closeEval();}
-          else toast(res.message||'Error','err');
-        }catch(e){toast(e.message,'err');}
-        btn.disabled=false;btn.textContent='Enviar Evaluación';
-      },
-
-      // ── DASHBOARD ──
-      async loadDash(){
-        try{
-          const d=(await apiCall('getDashboardData')).data,a=d.analytics||{};
-          document.getElementById('dSt').innerHTML=`
-            <div class="st sb"><div class="st-i">📝</div><div class="st-n">${a.totalVotos||0}</div><div class="st-l">Total Votos</div></div>
-            <div class="st sl"><div class="st-i">👥</div><div class="st-n">${a.votantesUnicos||0}</div><div class="st-l">Votantes</div></div>
-            <div class="st sb"><div class="st-i">⭐</div><div class="st-n">${a.evaluadosUnicos||0}</div><div class="st-l">Evaluados</div></div>
-            <div class="st sa"><div class="st-i">📊</div><div class="st-n">${this._avg(a.promedios)}</div><div class="st-l">Promedio</div></div>`;
-          const pr=a.promedios||{},c1=document.getElementById('cD')?.getContext('2d');
-          if(c1){if(CHS.d)CHS.d.destroy();CHS.d=new Chart(c1,{type:'bar',data:{labels:Object.keys(pr),datasets:[{data:Object.values(pr),backgroundColor:'#97D700',borderColor:'#10069F',borderWidth:1.5,borderRadius:5,barThickness:24}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:10}}}});}
-          const tr=d.tendencias||[],c2=document.getElementById('cT')?.getContext('2d');
-          if(c2&&tr.length){if(CHS.t)CHS.t.destroy();CHS.t=new Chart(c2,{type:'line',data:{labels:tr.map(t=>t.fecha),datasets:[{data:tr.map(t=>t.promedio),borderColor:'#10069F',backgroundColor:'rgba(16,6,159,0.05)',tension:.35,fill:true,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:10}}}});}
-          document.getElementById('tT').innerHTML=`<thead><tr><th>Fecha</th><th>Promedio</th><th>Votos</th></tr></thead><tbody>${tr.map(t=>`<tr><td>${t.fecha}</td><td>${t.promedio}/10</td><td>${t.votos}</td></tr>`).join('')}</tbody>`;
-        }catch(e){toast(e.message,'err');}
-      },
-      _avg(p){if(!p)return'—';const v=Object.values(p).map(Number);return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'—';},
-
-      // ── REPORTES ──
-      async loadRep(){
-        try{
-          const d=(await apiCall('getAllData')).data,cl=d.colaboradores||[],pr=d.promedios||{},g={};
-          cl.forEach(c=>{const a=c.area||'Sin Área';if(!g[a])g[a]=[];g[a].push(c);});
-          let rows='';
-          Object.keys(g).sort().forEach(a=>{
-            rows+=`<tr><td colspan="4" style="background:var(--slate-50);font-weight:700;color:var(--blue-800);padding:8px 14px;font-size:0.78rem">📂 ${a}</td></tr>`;
-            g[a].forEach(c=>{const p=pr[String(c.id)];rows+=`<tr><td>${c.nombre}</td><td>${c.sede||'—'}</td><td>${p?parseFloat(p).toFixed(1)+'/10':'—'}</td><td>${this._st(p)}</td></tr>`;});
-          });
-          document.getElementById('tR').innerHTML=`<thead><tr><th>Colaborador</th><th>Sede</th><th>Promedio</th><th>Rating</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;padding:20px">Sin datos</td></tr>'}</tbody>`;
-        }catch(e){toast(e.message,'err');}
-      },
-      _st(p){if(!p)return'☆☆☆☆☆';const v=parseFloat(p)/2;let s='';for(let i=1;i<=5;i++)s+=i<=Math.round(v)?'★':'☆';return`<span style="color:#f59e0b;letter-spacing:2px">${s}</span>`;},
-      expX(){toast('Exportación Excel próximamente','info');},expP(){toast('Exportación PDF próximamente','info');},
-
-      // ── ADMIN ──
-      async loadAdm(){
-        try{
-          const s=(await apiCall('getAdminStats')).data;
-          document.getElementById('aSt').innerHTML=`
-            <div class="st sb"><div class="st-i">👥</div><div class="st-n">${s.totalColaboradores||0}</div><div class="st-l">Colaboradores</div></div>
-            <div class="st sl"><div class="st-i">📋</div><div class="st-n">${s.totalAreas||0}</div><div class="st-l">Áreas</div></div>
-            <div class="st sa"><div class="st-i">⭐</div><div class="st-n">${s.colaboradoresEvaluados||0}</div><div class="st-l">Evaluados</div></div>`;
-          ADM={p:s.parametros||[],ps:s.parametrosSupervisores||[],ar:s.areas||[],se:s.sedes||[]};
-          this.adm.renderAll();
-        }catch(e){toast(e.message,'err');}
-      },
-
-      adm:{
-        renderAll(){this._r('adP',ADM.p,'p');this._r('adPS',ADM.ps,'ps');this._r('adAR',ADM.ar,'ar');this._r('adSE',ADM.se,'se');},
-        _r(id,arr,k){document.getElementById(id).innerHTML=arr.map((v,i)=>`<div class="adm-it"><input class="adm-in ai-${k}" value="${v}"><button class="bd-sm" onclick="App.adm.rm('${k}',${i})">🗑</button></div>`).join('');},
-        add(k){ADM[k].push('Nuevo');this.renderAll();},
-        rm(k,i){if(ADM[k].length<=1){toast('Mínimo 1','err');return;}ADM[k].splice(i,1);this.renderAll();},
-        _v(k){return Array.from(document.querySelectorAll(`.ai-${k}`)).map(e=>e.value.trim()).filter(Boolean);},
-        async save(k){
-          const map={p:'saveParametros',ps:'saveParametrosSupervisores',ar:'saveAreas',se:'saveSedes'};
-          try{await apiCall(map[k],{token:TOKEN,valores:this._v(k)});ADM[k]=this._v(k);toast('Guardado','ok');}catch(e){toast(e.message,'err');}
-        }
-      }
-    };
-  </script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

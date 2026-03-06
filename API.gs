@@ -1,810 +1,340 @@
-// ====================================================================
-// API REST - SISTEMA DE VOTACIÓN PREMIUM V3
-// ====================================================================
-// Despliega como Web App en Google Apps Script
-// URL base: https://script.google.com/macros/s/{DEPLOY_ID}/exec
-//
-// AUTENTICACIÓN (2 modos):
-//   1) Abierta con CORS  → Solo configurar ALLOWED_ORIGINS
-//   2) Con Token          → Configurar API_TOKEN + ALLOWED_ORIGINS
-//
-// ENDPOINTS (vía query param "action"):
-//   GET  ?action=getAllData
-//   GET  ?action=getDashboardData
-//   GET  ?action=getAnalytics
-//   GET  ?action=getAdminStats
-//   POST ?action=guardarVotos        (body JSON)
-//   POST ?action=saveParametros      (body JSON)
-//   POST ?action=saveAreas           (body JSON)
-//   POST ?action=saveSedes           (body JSON)
-//   POST ?action=saveParametrosSupervisores (body JSON)
-//   POST ?action=actualizarConfiguracion    (body JSON)
-//   POST ?action=asignarRol          (body JSON)
-//   POST ?action=generar2FA          (body JSON)
-//   POST ?action=validar2FA          (body JSON)
-// ====================================================================
-
-// ============= CONFIGURACIÓN =============
-
-const CONFIG = {
-  APP_NAME: 'Sistema de Votación Premium',
-  VERSION: '3.0.0',
-  IDIOMA_DEFAULT: 'es',
-  ZONA_HORARIA: 'America/Guatemala',
-
-  // --- Seguridad ---
-  // Modo 1: Dejar API_TOKEN vacío → API abierta (solo CORS)
-  // Modo 2: Poner un token → Se requiere header "Authorization: Bearer <token>"
-  API_TOKEN: '',  // Ejemplo: 'mi-token-secreto-2026'
-
-  ALLOWED_ORIGINS: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:5500',
-    // Agregar tu dominio de Netlify/Vercel:
-    // 'https://mi-app.netlify.app',
-    // 'https://mi-app.vercel.app',
-  ],
-
-  WEBHOOK_URL: '',
-  SLACK_WEBHOOK: '',
-  ENCRYPTING_KEY: 'votacion-2fa-key-2026',
-  MAX_INTENTOS_LOGIN: 5,
-  DURACION_2FA_MINUTOS: 10
-};
-
-// ============= CORS & AUTH MIDDLEWARE =============
-
 /**
- * Genera headers CORS según el origin de la petición.
+ * API v5.1 — Sistema de Evaluación
+ * Changes: sede filtering for mini-munis, top colaborador per area/sede, role-based perms
  */
-function getCorsHeaders_(requestOrigin) {
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Max-Age': '86400'
-  };
+var CFG={VERSION:'5.1',SESSION_H:8};
+function sha256_(t){return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,t).map(function(b){return('0'+((b+256)%256).toString(16)).slice(-2)}).join('')}
+function uuid_(){return Utilities.getUuid()}
+function jr_(d){return ContentService.createTextOutput(JSON.stringify(d)).setMimeType(ContentService.MimeType.JSON)}
+function ok_(d){return jr_({status:'ok',data:d})}
+function err_(m){return jr_({status:'error',message:m})}
 
-  if (CONFIG.ALLOWED_ORIGINS.length === 0 || CONFIG.ALLOWED_ORIGINS.includes(requestOrigin)) {
-    headers['Access-Control-Allow-Origin'] = requestOrigin || '*';
-  }
-
-  return headers;
+function doGet(){return jr_({status:'ok',v:CFG.VERSION})}
+function doPost(e){
+  var b;try{b=JSON.parse(e.postData.contents)}catch(x){return err_('JSON inválido')}
+  var a=b.action||'';
+  try{
+    switch(a){
+      case 'login':return jr_(login_(b));
+      case 'cambiarPassword':return jr_(cambiarPwd_(b));
+      case 'logout':return jr_(logout_(b));
+      case 'getAllData':return wA_(b,getAllData_);
+      case 'getDashboardData':return wA_(b,getDash_);
+      case 'getAdminStats':return wA_(b,getAdminStats_);
+      case 'guardarVotos':return jr_(guardarVotos_(b));
+      case 'getUsuarios':return wA_(b,getUsuarios_);
+      case 'crearUsuario':return jr_(crearUsuario_(b));
+      case 'editarUsuario':return jr_(editarUsuario_(b));
+      case 'eliminarUsuario':return jr_(eliminarUsuario_(b));
+      case 'saveParametros':case 'saveParametrosSupervisores':case 'saveAreas':case 'saveSedes':return jr_(saveList_(b));
+      default:return err_('Acción: '+a)
+    }
+  }catch(x){return err_(x.toString())}
 }
+function wA_(b,fn){var s=sesOk_(b.token);if(!s)return err_('Sesión inválida');return ok_(fn(s,b))}
 
-/**
- * Crea respuesta JSON con CORS.
- */
-function jsonResponse_(data, statusCode, origin) {
-  const headers = getCorsHeaders_(origin);
-  const output = ContentService
-    .createTextOutput(JSON.stringify({ status: statusCode >= 400 ? 'error' : 'ok', ...data }))
-    .setMimeType(ContentService.MimeType.JSON);
-  return output;
+/* Column detection */
+var _hc={};
+function hm_(sh){
+  var n=sh.getName();if(_hc[n])return _hc[n];
+  var hs=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0],m={};
+  for(var i=0;i<hs.length;i++){
+    var h=String(hs[i]).toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(/^(email|correo|usuario)$/.test(h))m.email=i;
+    else if(/^(nombre|name)/.test(h))m.nombre=i;
+    else if(/^(rol|role|perfil)$/.test(h))m.rol=i;
+    else if(/^(area|equipo|departamento)$/.test(h))m.area=i;
+    else if(/^(activo|active|habilitado)$/.test(h))m.activo=i;
+    else if(/^(fecha.?creacion|creado)/.test(h))m.fcreacion=i;
+    else if(/^(ultimo.?acceso|last.?access)/.test(h))m.acceso=i;
+    else if(/^(passwordhash|password|hash|contrasena|clave)$/.test(h))m.pwd=i;
+    else if(/^(primer.?ingreso|cambiar.?password)/.test(h))m.primer=i;
+    else if(/^(sede|ubicacion|location)$/.test(h))m.sede=i;
+    else if(/^(foto|fotourl|photo|imagen)/.test(h))m.foto=i;
+    else if(/^(id|numero|no)$/.test(h))m.id=i;
+    else if(/^(colaborador)$/.test(h)){if(m.nombre===undefined)m.nombre=i;}
+    // permisos field
+    else if(/^(permisos|permissions)$/.test(h))m.permisos=i;
+  }
+  _hc[n]=m;return m;
 }
+function cv_(r,m,k,d){return m[k]!==undefined?r[m[k]]:d}
+function isT_(v){return v===true||String(v).toUpperCase()==='TRUE'}
+function dUrl_(u){if(!u)return'';var x=String(u).match(/\/d\/([a-zA-Z0-9-_]+)/);return x?'https://lh3.googleusercontent.com/d/'+x[1]:String(u)}
 
-/**
- * Valida token de autenticación si está configurado.
- * Retorna null si es válido, o un objeto de error si no.
- */
-function validateAuth_(e) {
-  if (!CONFIG.API_TOKEN) return null; // Modo abierto
-
-  const authHeader = e.parameter?.token || '';
-  // En Apps Script no hay headers reales en doGet/doPost,
-  // así que el token se pasa como query param: ?token=MI_TOKEN
-  // o en el body JSON como campo "token"
-
-  let token = authHeader;
-
-  if (!token && e.postData) {
-    try {
-      const body = JSON.parse(e.postData.contents);
-      token = body.token || '';
-    } catch (_) {}
+function findU_(email){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Usuarios');
+  if(!sh)return null;var m=hm_(sh),d=sh.getDataRange().getValues();if(m.email===undefined)return null;
+  var e=String(email).trim().toLowerCase();
+  for(var i=1;i<d.length;i++){
+    if(String(d[i][m.email]).trim().toLowerCase()===e){
+      var permisos=m.permisos!==undefined?String(d[i][m.permisos]):'';
+      return{ri:i,sh:sh,m:m,email:String(d[i][m.email]).trim(),nombre:cv_(d[i],m,'nombre',''),
+        rol:String(cv_(d[i],m,'rol','votante')).toLowerCase().trim(),
+        area:String(cv_(d[i],m,'area','')),
+        activo:m.activo!==undefined?isT_(d[i][m.activo]):true,
+        pwd:String(cv_(d[i],m,'pwd','')),primer:m.primer!==undefined?isT_(d[i][m.primer]):false,
+        sede:String(cv_(d[i],m,'sede','')),foto:dUrl_(cv_(d[i],m,'foto','')),
+        permisos:permisos?permisos.split(',').map(function(p){return p.trim()}):[]}
+    }
   }
-
-  if (token !== CONFIG.API_TOKEN) {
-    return { error: 'No autorizado. Token inválido o ausente.', code: 401 };
-  }
-
   return null;
 }
 
-// ============= ENTRY POINTS =============
-
-function doGet(e) {
-  const origin = e.parameter?.origin || '*';
-
-  // Preflight
-  if (!e.parameter?.action) {
-    return jsonResponse_({ message: CONFIG.APP_NAME + ' API v' + CONFIG.VERSION, endpoints: [
-      'getAllData', 'getDashboardData', 'getAnalytics', 'getAdminStats'
-    ]}, 200, origin);
-  }
-
-  // Auth check
-  const authError = validateAuth_(e);
-  if (authError) return jsonResponse_(authError, 401, origin);
-
-  const action = e.parameter.action;
-
-  try {
-    switch (action) {
-      case 'getAllData':
-        return jsonResponse_({ data: api_getAllData(e) }, 200, origin);
-
-      case 'getDashboardData':
-        return jsonResponse_({ data: api_getDashboardData() }, 200, origin);
-
-      case 'getAnalytics':
-        return jsonResponse_({ data: api_getAnalytics() }, 200, origin);
-
-      case 'getAdminStats':
-        return jsonResponse_({ data: api_getAdminStats() }, 200, origin);
-
-      default:
-        return jsonResponse_({ error: 'Acción GET no reconocida: ' + action }, 400, origin);
-    }
-  } catch (err) {
-    return jsonResponse_({ error: err.toString() }, 500, origin);
-  }
+/* Sessions */
+function sesOk_(tk){
+  if(!tk)return null;var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sesiones');
+  if(!sh)return null;var d=sh.getDataRange().getValues(),now=new Date();
+  for(var i=1;i<d.length;i++){if(d[i][0]===tk){if(now>new Date(d[i][3])){sh.deleteRow(i+1);return null}return{usuario:d[i][1]}}}
+  return null;
 }
+function mkSes_(e,tk){var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Sesiones');if(!sh){sh=ss.insertSheet('Sesiones');sh.appendRow(['Token','Usuario','Creado','Expira'])}var n=new Date();sh.appendRow([tk,e,n,new Date(n.getTime()+CFG.SESSION_H*3600000)])}
+function rmSes_(tk){var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sesiones');if(!sh)return;var d=sh.getDataRange().getValues();for(var i=d.length-1;i>=1;i--){if(d[i][0]===tk){sh.deleteRow(i+1);return}}}
+function log_(a,u,d){var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Auditoria');if(!sh){sh=ss.insertSheet('Auditoria');sh.appendRow(['Timestamp','Usuario','Accion','Detalles'])}sh.appendRow([new Date(),u,a,JSON.stringify(d||{})])}
 
-function doPost(e) {
-  const origin = e.parameter?.origin || '*';
-
-  // Auth check
-  const authError = validateAuth_(e);
-  if (authError) return jsonResponse_(authError, 401, origin);
-
-  const action = e.parameter?.action || '';
-  let body = {};
-
-  try {
-    body = JSON.parse(e.postData.contents);
-  } catch (_) {
-    return jsonResponse_({ error: 'Body JSON inválido' }, 400, origin);
-  }
-
-  try {
-    switch (action) {
-      case 'guardarVotos':
-        return jsonResponse_({ data: api_guardarVotos(body) }, 200, origin);
-
-      case 'saveParametros':
-        return jsonResponse_({ data: api_saveParametros(body.valores) }, 200, origin);
-
-      case 'saveParametrosSupervisores':
-        return jsonResponse_({ data: api_saveParametrosSupervisores(body.valores) }, 200, origin);
-
-      case 'saveAreas':
-        return jsonResponse_({ data: api_saveAreas(body.valores) }, 200, origin);
-
-      case 'saveSedes':
-        return jsonResponse_({ data: api_saveSedes(body.valores) }, 200, origin);
-
-      case 'actualizarConfiguracion':
-        return jsonResponse_({ data: api_actualizarConfiguracion(body) }, 200, origin);
-
-      case 'asignarRol':
-        return jsonResponse_({ data: api_asignarRol(body.email, body.rol) }, 200, origin);
-
-      case 'generar2FA':
-        return jsonResponse_({ data: api_generar2FA(body.usuario) }, 200, origin);
-
-      case 'validar2FA':
-        return jsonResponse_({ data: api_validar2FA(body.usuario, body.codigo) }, 200, origin);
-
-      default:
-        return jsonResponse_({ error: 'Acción POST no reconocida: ' + action }, 400, origin);
-    }
-  } catch (err) {
-    return jsonResponse_({ error: err.toString() }, 500, origin);
-  }
+/* Auth */
+function login_(b){
+  if(!b.usuario||!b.password)return{status:'error',message:'Credenciales requeridas'};
+  var u=findU_(b.usuario);if(!u)return{status:'error',message:'Usuario no encontrado'};
+  if(!u.activo)return{status:'error',message:'Usuario deshabilitado'};
+  var h=sha256_(b.password),primer=u.primer;
+  if(!u.pwd||u.pwd===''||u.pwd==='undefined'){
+    if(u.m.pwd!==undefined)u.sh.getRange(u.ri+1,u.m.pwd+1).setValue(h);
+    if(u.m.primer!==undefined)u.sh.getRange(u.ri+1,u.m.primer+1).setValue(true);
+    primer=true;
+  }else if(u.pwd!==h){log_('LOGIN_FAIL',b.usuario,{});return{status:'error',message:'Contraseña incorrecta'}}
+  var tk=uuid_();mkSes_(u.email,tk);
+  if(u.m.acceso!==undefined)u.sh.getRange(u.ri+1,u.m.acceso+1).setValue(new Date());
+  log_('LOGIN',u.email,{});
+  
+  // Build permissions based on role + custom permisos
+  var basePerms={admin:['votar','dashboard','reportes','admin','usuarios'],supervisor:['votar','dashboard','reportes'],votante:['votar'],evaluado:['votar']};
+  var rolePerms=basePerms[u.rol]||['votar'];
+  // Merge custom perms from sheet
+  var allPerms=rolePerms.slice();
+  u.permisos.forEach(function(p){if(p&&allPerms.indexOf(p)===-1)allPerms.push(p)});
+  
+  return{status:'ok',success:true,token:tk,usuario:{
+    email:u.email,nombre:u.nombre,rol:u.rol,area:u.area,sede:u.sede,foto:u.foto,primerIngreso:primer,permisos:allPerms
+  }};
 }
+function cambiarPwd_(b){
+  if(!b.nuevaPassword||b.nuevaPassword.length<6)return{status:'error',message:'Mínimo 6 caracteres'};
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var u=findU_(s.usuario);if(!u)return{status:'error',message:'No encontrado'};
+  if(u.m.pwd!==undefined)u.sh.getRange(u.ri+1,u.m.pwd+1).setValue(sha256_(b.nuevaPassword));
+  if(u.m.primer!==undefined)u.sh.getRange(u.ri+1,u.m.primer+1).setValue(false);
+  log_('PWD_CHANGE',s.usuario,{});return{status:'ok',success:true};
+}
+function logout_(b){rmSes_(b.token);return{status:'ok',success:true}}
 
-// ============= API HANDLERS =============
-
-function api_getAllData(e) {
-  inicializarSedes_();
-  inicializarParametrosSupervisores_();
-  crearSistemaRoles_();
-
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  // Si el usuario se pasa como param (frontend externo), usamos ese.
-  // Si no, intentamos Session (solo funciona si el usuario abre la app directamente).
-  const userEmail = e.parameter?.userEmail || Session.getActiveUser().getEmail() || 'anonimo@sistema';
-
-  registrarAcceso_(userEmail);
-
-  const colaboradoresSheet = ss.getSheetByName('Colaboradores');
-  const parametrosSheet = ss.getSheetByName('Parametros');
-  const parametrosSupervisoresSheet = ss.getSheetByName('Parametros Supervisores');
-  const areasSheet = ss.getSheetByName('Areas');
-  const sedesSheet = ss.getSheetByName('Sedes');
-  const votosSheet = ss.getSheetByName('Votos');
-
-  // --- Colaboradores ---
-  const colData = colaboradoresSheet && colaboradoresSheet.getLastRow() > 1
-    ? colaboradoresSheet.getRange(2, 1, colaboradoresSheet.getLastRow() - 1, 6).getValues()
-    : [];
-
-  const colaboradores = colData
-    .filter(row => row[0])
-    .map(row => ({
-      id: row[0],
-      nombre: row[1],
-      area: row[2],
-      fotoUrl: procesarUrlDrive_(row[3]) || '',
-      email: row[4],
-      sede: row[5] || ''
-    }));
-
-  // --- Parámetros ---
-  const paramData = parametrosSheet && parametrosSheet.getLastRow() > 1
-    ? parametrosSheet.getRange(2, 1, parametrosSheet.getLastRow() - 1, 1).getValues()
-    : [];
-  const parametros = paramData.map(r => r[0]).filter(p => p);
-
-  const paramSupData = parametrosSupervisoresSheet && parametrosSupervisoresSheet.getLastRow() > 1
-    ? parametrosSupervisoresSheet.getRange(2, 1, parametrosSupervisoresSheet.getLastRow() - 1, 1).getValues()
-    : [];
-  const parametrosSupervisores = paramSupData.map(r => r[0]).filter(p => p);
-
-  // --- Áreas y Sedes ---
-  const areaData = areasSheet && areasSheet.getLastRow() > 1
-    ? areasSheet.getRange(2, 1, areasSheet.getLastRow() - 1, 1).getValues()
-    : [];
-  const areas = areaData.map(r => r[0]).filter(a => a);
-
-  const sedeData = sedesSheet && sedesSheet.getLastRow() > 1
-    ? sedesSheet.getRange(2, 1, sedesSheet.getLastRow() - 1, 1).getValues()
-    : [];
-  const sedes = sedeData.map(r => r[0]).filter(s => s);
-
-  // --- Votos ---
-  const votosData = votosSheet && votosSheet.getLastRow() > 1
-    ? votosSheet.getRange(2, 1, votosSheet.getLastRow() - 1, 10).getValues()
-    : [];
-
-  const evaluacionesUnicas = {};
-  const promedios = {};
-
-  votosData.forEach(row => {
-    const votante = row[1];
-    const evaluadoId = String(row[4]);
-    const puntuacion = parseFloat(row[7]);
-    const claveUnica = votante + '|' + evaluadoId;
-
-    if (!evaluacionesUnicas[claveUnica]) {
-      evaluacionesUnicas[claveUnica] = true;
+/* Data */
+function getAllData_(ses){
+  var usr=findU_(ses.usuario);if(!usr)throw new Error('User not found');
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var cols=readCols_(ss.getSheetByName('Colaboradores'));
+  
+  // FILTERING LOGIC:
+  // admin/supervisor: see all
+  // others with "mini muni" in sede: filter by sede only
+  // others: filter by area
+  var isAdm=usr.rol==='admin'||usr.rol==='supervisor';
+  if(!isAdm){
+    var isMini=usr.sede&&usr.sede.toLowerCase().indexOf('mini')>=0;
+    if(isMini){
+      cols=cols.filter(function(c){return c.sede.toLowerCase().trim()===usr.sede.toLowerCase().trim()});
+    }else if(usr.area){
+      cols=cols.filter(function(c){return c.area.toLowerCase().trim()===usr.area.toLowerCase().trim()});
     }
+  }
 
-    if (evaluadoId && !isNaN(puntuacion) && puntuacion > 0) {
-      if (!promedios[evaluadoId]) {
-        promedios[evaluadoId] = { suma: 0, cantidad: 0 };
-      }
-      promedios[evaluadoId].suma += puntuacion;
-      promedios[evaluadoId].cantidad += 1;
+  var params=lst_(ss,'Parametros'),pSup=lst_(ss,'Parametros Supervisores'),areas=lst_(ss,'Areas'),sedes=lst_(ss,'Sedes');
+  var votos=readVotos_(ss);
+  var evU={},proms={};
+  for(var i=0;i<votos.length;i++){var v=votos[i];evU[v.vt+'|'+v.ei]=true;if(v.ei&&!isNaN(v.p)&&v.p>0){if(!proms[v.ei])proms[v.ei]={s:0,c:0};proms[v.ei].s+=v.p;proms[v.ei].c++}}
+  var pf={};for(var k in proms){pf[k]=proms[k].c>0?proms[k].s/proms[k].c:0}
+  var cids={};for(var j=0;j<cols.length;j++)cids[String(cols[j].id)]=true;
+  var tv=0,vs={},es={};
+  for(var i=0;i<votos.length;i++){if(cids[votos[i].ei]){tv++;vs[votos[i].vt]=true;es[votos[i].ei]=true}}
+  var nv=Object.keys(vs).length;
+
+  // Top por area y sede
+  var topArea={},topSede={};
+  for(var j=0;j<cols.length;j++){
+    var c=cols[j],pm=pf[String(c.id)];
+    if(pm&&pm>0){
+      if(!topArea[c.area]||pm>topArea[c.area].prom)topArea[c.area]={nombre:c.nombre,foto:c.fotoUrl,prom:pm,area:c.area};
+      if(c.sede){if(!topSede[c.sede]||pm>topSede[c.sede].prom)topSede[c.sede]={nombre:c.nombre,foto:c.fotoUrl,prom:pm,sede:c.sede}}
     }
-  });
+  }
 
-  const promediosFinales = {};
-  Object.entries(promedios).forEach(([id, data]) => {
-    promediosFinales[id] = data.cantidad > 0 ? data.suma / data.cantidad : 0;
-  });
+  // Build permissions
+  var basePerms={admin:['votar','dashboard','reportes','admin','usuarios'],supervisor:['votar','dashboard','reportes'],votante:['votar'],evaluado:['votar']};
+  var perms=basePerms[usr.rol]||['votar'];
+  usr.permisos.forEach(function(p){if(p&&perms.indexOf(p)===-1)perms.push(p)});
 
-  const rolUsuario = obtenerRolUsuario_(userEmail);
-  const permisos = obtenerPermisosUsuario_(userEmail);
-
-  return {
-    userEmail: userEmail,
-    colaboradores: colaboradores,
-    parametros: parametros.length > 0 ? parametros : ['Calidad de Trabajo'],
-    parametrosSupervisores: parametrosSupervisores.length > 0 ? parametrosSupervisores : ['Liderazgo'],
-    areas: areas,
-    sedes: sedes,
-    evaluacionesUnicas: evaluacionesUnicas,
-    promedios: promediosFinales,
-    cantidadParametros: parametros.length,
-    cantidadParametrosSupervisores: parametrosSupervisores.length,
-    rol: rolUsuario,
-    permisos: permisos,
-    analytics: getAnalyticsData_(),
-    idioma: CONFIG.IDIOMA_DEFAULT
+  return{
+    usuario:{email:usr.email,nombre:usr.nombre,rol:usr.rol,area:usr.area,sede:usr.sede,foto:usr.foto,permisos:perms},
+    colaboradores:cols,
+    parametros:params.length?params:['Calidad de Trabajo'],
+    parametrosSupervisores:pSup.length?pSup:['Liderazgo'],
+    areas:areas,sedes:sedes,evaluacionesUnicas:evU,promedios:pf,
+    topPorArea:topArea,topPorSede:topSede,
+    analytics:{totalVotos:tv,totalColaboradores:cols.length,votantesUnicos:nv,evaluadosUnicos:Object.keys(es).length,
+      tasaParticipacion:cols.length>0?((nv/cols.length)*100).toFixed(1):'0',
+      totalCalificados:Object.keys(es).length}
   };
 }
 
-function api_getDashboardData() {
-  return {
-    analytics: getAnalyticsData_(),
-    tendencias: getTendenciasTemporales_(),
-    timestamp: new Date()
+function getDash_(ses){
+  var usr=findU_(ses.usuario);if(!usr)throw new Error('NF');
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var allCols=readCols_(ss.getSheetByName('Colaboradores'));
+  var votos=readVotos_(ss);
+  // Global analytics
+  var proms={};
+  for(var i=0;i<votos.length;i++){var v=votos[i];if(v.ei&&!isNaN(v.p)&&v.p>0){if(!proms[v.ei])proms[v.ei]={s:0,c:0};proms[v.ei].s+=v.p;proms[v.ei].c++}}
+  var pf={};for(var k in proms){pf[k]=(proms[k].s/proms[k].c).toFixed(2)}
+  // Top per area
+  var topA={},topS={};
+  for(var j=0;j<allCols.length;j++){
+    var c=allCols[j],pm=pf[String(c.id)];
+    if(pm){var pmN=parseFloat(pm);
+      if(!topA[c.area]||pmN>topA[c.area].prom)topA[c.area]={nombre:c.nombre,foto:c.fotoUrl,prom:pmN,area:c.area};
+      if(c.sede&&(!topS[c.sede]||pmN>topS[c.sede].prom))topS[c.sede]={nombre:c.nombre,foto:c.fotoUrl,prom:pmN,sede:c.sede};
+    }
+  }
+  var vs={},es={};for(var i=0;i<votos.length;i++){vs[votos[i].vt]=true;es[votos[i].ei]=true}
+  return{
+    analytics:{totalVotos:votos.length,totalColaboradores:allCols.length,votantesUnicos:Object.keys(vs).length,evaluadosUnicos:Object.keys(es).length,promedios:pf,
+      tasaParticipacion:allCols.length>0?((Object.keys(vs).length/allCols.length)*100).toFixed(1):'0'},
+    topPorArea:topA,topPorSede:topS,tendencias:tend_(ss)
   };
 }
 
-function api_getAnalytics() {
-  return getAnalyticsData_();
+function getAdminStats_(ses){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),cS=ss.getSheetByName('Colaboradores');
+  return{totalColaboradores:cS?Math.max(0,cS.getLastRow()-1):0,totalAreas:lst_(ss,'Areas').length,
+    parametros:lst_(ss,'Parametros'),parametrosSupervisores:lst_(ss,'Parametros Supervisores'),
+    areas:lst_(ss,'Areas'),sedes:lst_(ss,'Sedes')};
 }
 
-function api_getAdminStats() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const colaboradoresSheet = ss.getSheetByName('Colaboradores');
-  const areasSheet = ss.getSheetByName('Areas');
-  const parametrosSheet = ss.getSheetByName('Parametros');
-  const parametrosSupervisoresSheet = ss.getSheetByName('Parametros Supervisores');
-  const sedesSheet = ss.getSheetByName('Sedes');
-
-  const paramData = parametrosSheet && parametrosSheet.getLastRow() > 1
-    ? parametrosSheet.getRange(2, 1, parametrosSheet.getLastRow() - 1, 1).getValues().map(r => r[0]).filter(p => p)
-    : [];
-
-  const paramSupData = parametrosSupervisoresSheet && parametrosSupervisoresSheet.getLastRow() > 1
-    ? parametrosSupervisoresSheet.getRange(2, 1, parametrosSupervisoresSheet.getLastRow() - 1, 1).getValues().map(r => r[0]).filter(p => p)
-    : [];
-
-  const areaData = areasSheet && areasSheet.getLastRow() > 1
-    ? areasSheet.getRange(2, 1, areasSheet.getLastRow() - 1, 1).getValues().map(r => r[0]).filter(a => a)
-    : [];
-
-  const sedeData = sedesSheet && sedesSheet.getLastRow() > 1
-    ? sedesSheet.getRange(2, 1, sedesSheet.getLastRow() - 1, 1).getValues().map(r => r[0]).filter(s => s)
-    : [];
-
-  return {
-    totalColaboradores: colaboradoresSheet ? Math.max(0, colaboradoresSheet.getLastRow() - 1) : 0,
-    totalAreas: areaData.length,
-    parametros: paramData,
-    parametrosSupervisores: paramSupData,
-    areas: areaData,
-    sedes: sedeData,
-    colaboradoresEvaluados: getAnalyticsData_().evaluadosUnicos || 0
-  };
-}
-
-function api_guardarVotos(body) {
-  const {
-    votanteEmail, votanteId, evaluadoId, evaluadoNombre,
-    calificaciones, sede, nombreVotante, comentario
-  } = body;
-
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const votosSheet = ss.getSheetByName('Votos');
-
-  // Verificar duplicado
-  const votosData = votosSheet && votosSheet.getLastRow() > 1
-    ? votosSheet.getRange(2, 1, votosSheet.getLastRow() - 1, 10).getValues()
-    : [];
-
-  const yaVoto = votosData.some(row => {
-    return row[1] === votanteEmail && String(row[4]) === String(evaluadoId);
-  });
-
-  if (yaVoto) {
-    registrarAuditoria_('VOTO_DUPLICADO', votanteEmail, { evaluadoId });
-    return { success: false, message: 'Ya evaluaste a este colaborador', evaluadoId: String(evaluadoId) };
+/* Users CRUD */
+function getUsuarios_(ses){
+  var u=findU_(ses.usuario);if(!u||u.rol!=='admin')throw new Error('No autorizado');
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Usuarios');if(!sh)return[];
+  var m=hm_(sh),d=sh.getDataRange().getValues(),out=[];
+  for(var i=1;i<d.length;i++){
+    var perms=m.permisos!==undefined?String(d[i][m.permisos]):'';
+    out.push({email:cv_(d[i],m,'email',''),nombre:cv_(d[i],m,'nombre',''),rol:String(cv_(d[i],m,'rol','votante')).toLowerCase(),
+      area:cv_(d[i],m,'area',''),activo:m.activo!==undefined?isT_(d[i][m.activo]):true,sede:cv_(d[i],m,'sede',''),
+      foto:dUrl_(cv_(d[i],m,'foto','')),permisos:perms})
   }
-
-  const timestamp = new Date();
-  const rows = calificaciones.map(cal => [
-    timestamp,
-    votanteEmail,
-    votanteId || 0,
-    nombreVotante || votanteEmail,
-    evaluadoId,
-    evaluadoNombre,
-    cal.parametro,
-    cal.puntuacion,
-    sede || '',
-    comentario || ''
-  ]);
-
-  try {
-    votosSheet.getRange(votosSheet.getLastRow() + 1, 1, rows.length, 10).setValues(rows);
-
-    registrarAuditoria_('EVALUACION_GUARDADA', votanteEmail, {
-      evaluadoId,
-      puntuaciones: calificaciones.map(c => c.puntuacion)
-    });
-
-    dispararWebhook_('EVALUACION_COMPLETADA', { votante: votanteEmail, evaluado: evaluadoId, timestamp });
-
-    const nuevoPromedio = calcularPromedioColaborador_(evaluadoId);
-
-    return {
-      success: true,
-      message: '✓ Evaluación guardada para ' + evaluadoNombre,
-      evaluadoId: String(evaluadoId),
-      nuevoPromedio
-    };
-  } catch (err) {
-    registrarAuditoria_('ERROR_EVALUACION', votanteEmail, { error: err.toString() });
-    return { success: false, message: 'Error: ' + err.toString() };
-  }
+  return out;
+}
+function crearUsuario_(b){
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  if(!b.email||!b.nombre)return{status:'error',message:'Email y nombre requeridos'};
+  if(findU_(b.email))return{status:'error',message:'Ya existe'};
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Usuarios'),m=hm_(sh);
+  var hs=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0],row=[];
+  for(var c=0;c<hs.length;c++)row.push('');
+  if(m.email!==undefined)row[m.email]=b.email;
+  if(m.nombre!==undefined)row[m.nombre]=b.nombre;
+  if(m.rol!==undefined)row[m.rol]=b.rol||'votante';
+  if(m.area!==undefined)row[m.area]=b.area||'';
+  if(m.activo!==undefined)row[m.activo]=true;
+  if(m.fcreacion!==undefined)row[m.fcreacion]=new Date();
+  if(m.pwd!==undefined)row[m.pwd]=b.password?sha256_(b.password):'';
+  if(m.primer!==undefined)row[m.primer]=true;
+  if(m.sede!==undefined)row[m.sede]=b.sede||'';
+  if(m.foto!==undefined)row[m.foto]=b.foto||'';
+  if(m.permisos!==undefined)row[m.permisos]=b.permisos||'';
+  sh.appendRow(row);log_('USER_CREATE',s.usuario,{n:b.email});
+  return{status:'ok',success:true};
+}
+function editarUsuario_(b){
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var u=findU_(b.email);if(!u)return{status:'error',message:'No encontrado'};
+  if(b.nombre!==undefined&&u.m.nombre!==undefined)u.sh.getRange(u.ri+1,u.m.nombre+1).setValue(b.nombre);
+  if(b.rol!==undefined&&u.m.rol!==undefined)u.sh.getRange(u.ri+1,u.m.rol+1).setValue(b.rol);
+  if(b.area!==undefined&&u.m.area!==undefined)u.sh.getRange(u.ri+1,u.m.area+1).setValue(b.area);
+  if(b.sede!==undefined&&u.m.sede!==undefined)u.sh.getRange(u.ri+1,u.m.sede+1).setValue(b.sede);
+  if(b.activo!==undefined&&u.m.activo!==undefined)u.sh.getRange(u.ri+1,u.m.activo+1).setValue(b.activo);
+  if(b.foto!==undefined&&u.m.foto!==undefined)u.sh.getRange(u.ri+1,u.m.foto+1).setValue(b.foto);
+  if(b.permisos!==undefined&&u.m.permisos!==undefined)u.sh.getRange(u.ri+1,u.m.permisos+1).setValue(b.permisos);
+  if(b.resetPassword&&u.m.pwd!==undefined){u.sh.getRange(u.ri+1,u.m.pwd+1).setValue('');if(u.m.primer!==undefined)u.sh.getRange(u.ri+1,u.m.primer+1).setValue(true)}
+  log_('USER_EDIT',s.usuario,{t:b.email});return{status:'ok',success:true};
+}
+function eliminarUsuario_(b){
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var u=findU_(b.email);if(!u)return{status:'error',message:'No encontrado'};
+  u.sh.deleteRow(u.ri+1);log_('USER_DEL',s.usuario,{t:b.email});return{status:'ok',success:true};
 }
 
-function api_saveParametros(valores) {
-  return guardarListaEnHoja_('Parametros', 'Parametro', valores);
+/* Votes */
+function guardarVotos_(b){
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),vSh=ss.getSheetByName('Votos');
+  if(!vSh){vSh=ss.insertSheet('Votos');vSh.appendRow(['Timestamp','EmailVotante','IdVotante','NombreVotante','IdEvaluado','NombreEvaluado','Parametro','Puntuacion','Sede','Comentario'])}
+  var vD=vSh.getLastRow()>1?vSh.getRange(2,1,vSh.getLastRow()-1,10).getValues():[];
+  for(var i=0;i<vD.length;i++){if(String(vD[i][1])===s.usuario&&String(vD[i][4])===String(b.evaluadoId))return{status:'ok',success:false,message:'Ya evaluaste a este colaborador',evaluadoId:String(b.evaluadoId)}}
+  var usr=findU_(s.usuario),ts=new Date(),rows=[];
+  for(var c=0;c<b.calificaciones.length;c++){rows.push([ts,s.usuario,'',usr?usr.nombre:s.usuario,b.evaluadoId,b.evaluadoNombre,b.calificaciones[c].parametro,b.calificaciones[c].puntuacion,b.sede||'',b.comentario||''])}
+  vSh.getRange(vSh.getLastRow()+1,1,rows.length,10).setValues(rows);
+  log_('EVAL',s.usuario,{ei:b.evaluadoId});
+  var all=vSh.getRange(2,1,vSh.getLastRow()-1,10).getValues(),sum=0,cnt=0;
+  for(var i=0;i<all.length;i++){if(String(all[i][4])===String(b.evaluadoId)){var p=parseFloat(all[i][7]);if(!isNaN(p)&&p>0){sum+=p;cnt++}}}
+  return{status:'ok',success:true,message:'Evaluación guardada',evaluadoId:String(b.evaluadoId),nuevoPromedio:cnt>0?sum/cnt:0};
+}
+function saveList_(b){
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var map={saveParametros:{h:'Parametros',hd:'Parametro'},saveParametrosSupervisores:{h:'Parametros Supervisores',hd:'Parametro'},saveAreas:{h:'Areas',hd:'Area'},saveSedes:{h:'Sedes',hd:'Sede'}};
+  var c=map[b.action];if(!c)return{status:'error',message:'?'};
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(c.h);
+  if(!sh){sh=ss.insertSheet(c.h);sh.getRange(1,1).setValue(c.hd).setFontWeight('bold')}
+  if(sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,1).clearContent();
+  if(b.valores&&b.valores.length)sh.getRange(2,1,b.valores.length,1).setValues(b.valores.map(function(v){return[v]}));
+  return{status:'ok',success:true};
 }
 
-function api_saveParametrosSupervisores(valores) {
-  return guardarListaEnHoja_('Parametros Supervisores', 'Parametro', valores);
+/* Helpers */
+function readCols_(sh){
+  if(!sh||sh.getLastRow()<=1)return[];
+  var m=hm_(sh),d=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues();
+  if(m.id===undefined)m.id=0;if(m.nombre===undefined)m.nombre=1;if(m.area===undefined)m.area=2;if(m.foto===undefined)m.foto=3;if(m.email===undefined)m.email=4;if(m.sede===undefined)m.sede=5;
+  var out=[];for(var i=0;i<d.length;i++){var r=d[i];if(!r[m.id]&&!r[m.nombre])continue;out.push({id:r[m.id]||(i+1),nombre:String(r[m.nombre]||''),area:String(r[m.area]||''),fotoUrl:dUrl_(r[m.foto]),email:String(r[m.email]||''),sede:String(r[m.sede]||'')})}
+  return out;
+}
+function readVotos_(ss){
+  var sh=ss.getSheetByName('Votos');if(!sh||sh.getLastRow()<=1)return[];
+  var d=sh.getRange(2,1,sh.getLastRow()-1,10).getValues(),o=[];
+  for(var i=0;i<d.length;i++){o.push({vt:String(d[i][1]),ei:String(d[i][4]),p:parseFloat(d[i][7])})}return o;
+}
+function lst_(ss,n){var sh=ss.getSheetByName(n);if(!sh||sh.getLastRow()<=1)return[];return sh.getRange(2,1,sh.getLastRow()-1,1).getValues().map(function(r){return r[0]}).filter(Boolean)}
+function tend_(ss){
+  var sh=ss.getSheetByName('Votos');if(!sh||sh.getLastRow()<=1)return[];
+  var d=sh.getRange(2,1,sh.getLastRow()-1,10).getValues(),t={};
+  for(var i=0;i<d.length;i++){var f=new Date(d[i][0]).toLocaleDateString('es-GT'),p=parseFloat(d[i][7]);if(!isNaN(p)){if(!t[f])t[f]={s:0,c:0};t[f].s+=p;t[f].c++}}
+  var r=[];for(var f in t){r.push({fecha:f,promedio:(t[f].s/t[f].c).toFixed(2),votos:t[f].c})}return r;
 }
 
-function api_saveAreas(valores) {
-  return guardarListaEnHoja_('Areas', 'Area', valores);
-}
-
-function api_saveSedes(valores) {
-  return guardarListaEnHoja_('Sedes', 'Sede', valores);
-}
-
-function api_actualizarConfiguracion(body) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let configSheet = ss.getSheetByName('Configuracion');
-
-  if (!configSheet) {
-    configSheet = ss.insertSheet('Configuracion');
-    configSheet.appendRow(['Clave', 'Valor']);
-  }
-
-  Object.entries(body).forEach(([clave, valor]) => {
-    if (clave === 'token') return; // No guardar token como config
-    configSheet.appendRow([clave, valor]);
-  });
-
-  return { success: true };
-}
-
-function api_asignarRol(email, rol) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let usersSheet = ss.getSheetByName('Usuarios');
-
-  if (!usersSheet) crearSistemaRoles_();
-  usersSheet = ss.getSheetByName('Usuarios');
-
-  const data = usersSheet.getDataRange().getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === email) {
-      usersSheet.getRange(i + 1, 3).setValue(rol);
-      registrarAuditoria_('ROL_ASIGNADO', email, { rol });
-      return { success: true };
-    }
-  }
-
-  return { success: false, mensaje: 'Usuario no encontrado' };
-}
-
-function api_generar2FA(usuario) {
-  const codigo = generarCodigo2FA_(usuario);
-  // En producción, enviar por email:
-  // enviarEmailNotificacion_(usuario, 'Código 2FA', 'Tu código: ' + codigo);
-  return { success: true, message: 'Código generado' };
-}
-
-function api_validar2FA(usuario, codigo) {
-  return validar2FA_(usuario, codigo);
-}
-
-// ============= FUNCIONES INTERNAS (HELPERS) =============
-
-function guardarListaEnHoja_(nombreHoja, headerNombre, valores) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(nombreHoja);
-
-  if (!sheet) {
-    sheet = ss.insertSheet(nombreHoja);
-    sheet.getRange(1, 1).setValue(headerNombre).setFontWeight('bold');
-  }
-
-  // Limpiar datos existentes (excepto header)
-  if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).clearContent();
-  }
-
-  // Escribir nuevos valores
-  if (valores && valores.length > 0) {
-    const data = valores.map(v => [v]);
-    sheet.getRange(2, 1, data.length, 1).setValues(data);
-  }
-
-  return { success: true, total: valores ? valores.length : 0 };
-}
-
-function procesarUrlDrive_(url) {
-  if (!url) return '';
-  const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if (match && match[1]) {
-    return 'https://lh3.googleusercontent.com/d/' + match[1];
-  }
-  return url;
-}
-
-// ============= SEGURIDAD Y AUDITORÍA =============
-
-function registrarAuditoria_(accion, usuario, detalles) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('Auditoria');
-
-  if (!sheet) {
-    sheet = ss.insertSheet('Auditoria');
-    sheet.appendRow(['Timestamp', 'Usuario', 'Email', 'Accion', 'IP', 'Detalles', 'Estado']);
-  }
-
-  sheet.appendRow([
-    new Date(),
-    usuario,
-    Session.getActiveUser().getEmail() || usuario,
-    accion,
-    'web-api',
-    JSON.stringify(detalles || {}),
-    'COMPLETADO'
-  ]);
-}
-
-function generarCodigo2FA_(usuario) {
-  const codigo = Math.random().toString().substring(2, 8);
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('2FA');
-
-  if (!sheet) {
-    sheet = ss.insertSheet('2FA');
-    sheet.appendRow(['Usuario', 'Email', 'Codigo', 'Timestamp', 'Verificado', 'Intentos']);
-  }
-
-  sheet.appendRow([usuario, Session.getActiveUser().getEmail() || usuario, codigo, new Date(), 'PENDIENTE', 0]);
-  registrarAuditoria_('2FA_GENERADO', usuario, { codigo: '***' });
-  return codigo;
-}
-
-function validar2FA_(usuario, codigo) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('2FA');
-
-  if (!sheet) return { valido: false, razon: 'No se encontró registro 2FA' };
-
-  const data = sheet.getDataRange().getValues();
-  const ahora = new Date();
-
-  for (let i = data.length - 1; i >= 1; i--) {
-    const row = data[i];
-    if (row[0] === usuario || row[1] === usuario) {
-      const timestamp = new Date(row[3]);
-      const minutos = (ahora - timestamp) / (1000 * 60);
-
-      if (minutos > CONFIG.DURACION_2FA_MINUTOS) {
-        return { valido: false, razon: 'Código expirado' };
-      }
-
-      if (String(row[2]) === String(codigo)) {
-        sheet.getRange(i + 1, 5).setValue('VERIFICADO');
-        registrarAuditoria_('2FA_VALIDADO', usuario, {});
-        return { valido: true };
-      } else {
-        const intentos = (row[5] || 0) + 1;
-        sheet.getRange(i + 1, 6).setValue(intentos);
-
-        if (intentos >= CONFIG.MAX_INTENTOS_LOGIN) {
-          registrarAuditoria_('2FA_BLOQUEADO', usuario, { intentos });
-          return { valido: false, razon: 'Demasiados intentos. Cuenta bloqueada.' };
-        }
-
-        return { valido: false, razon: 'Código incorrecto' };
-      }
-    }
-  }
-
-  return { valido: false, razon: 'No se encontró registro 2FA' };
-}
-
-// ============= ROLES Y USUARIOS =============
-
-function crearSistemaRoles_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  if (!ss.getSheetByName('Usuarios')) {
-    const usersSheet = ss.insertSheet('Usuarios');
-    usersSheet.appendRow(['Email', 'Nombre', 'Rol', 'Equipo', 'Activo', 'Fecha_Creacion', 'Ultimo_Acceso']);
-  }
-
-  if (!ss.getSheetByName('Roles')) {
-    const rolesSheet = ss.insertSheet('Roles');
-    rolesSheet.appendRow(['Rol', 'Permisos', 'Descripcion']);
-    rolesSheet.appendRow(['admin', 'crear,editar,eliminar,leer,reportes,usuarios', 'Administrador del sistema']);
-    rolesSheet.appendRow(['votante', 'leer,votar', 'Usuario que puede evaluar']);
-    rolesSheet.appendRow(['evaluado', 'leer', 'Usuario que puede ser evaluado']);
-    rolesSheet.appendRow(['supervisor', 'leer,votar,reportes', 'Supervisor con reportes']);
-  }
-}
-
-function obtenerRolUsuario_(email) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Usuarios');
-
-  if (!sheet) return 'votante';
-
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === email) return data[i][2] || 'votante';
-  }
-  return 'votante';
-}
-
-function obtenerPermisosUsuario_(email) {
-  const rol = obtenerRolUsuario_(email);
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Roles');
-
-  if (!sheet) return [];
-
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === rol) return data[i][1].split(',');
-  }
-  return [];
-}
-
-function registrarAcceso_(usuario) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Usuarios');
-
-  if (!sheet) return;
-
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === usuario) {
-      sheet.getRange(i + 1, 7).setValue(new Date());
-      break;
-    }
-  }
-}
-
-// ============= ANALYTICS =============
-
-function getAnalyticsData_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const votosSheet = ss.getSheetByName('Votos');
-  const colaboradoresSheet = ss.getSheetByName('Colaboradores');
-
-  if (!votosSheet) return { totalVotos: 0, totalColaboradores: 0, votantesUnicos: 0, evaluadosUnicos: 0, tasaParticipacion: '0', promedios: {} };
-
-  const votosData = votosSheet.getLastRow() > 1
-    ? votosSheet.getRange(2, 1, votosSheet.getLastRow() - 1, 10).getValues()
-    : [];
-
-  const totalColaboradores = colaboradoresSheet ? Math.max(0, colaboradoresSheet.getLastRow() - 1) : 0;
-
-  const votantesUnicos = new Set();
-  const evaluadosUnicos = new Set();
-  const promediosMap = {};
-
-  votosData.forEach(row => {
-    votantesUnicos.add(row[1]);
-    evaluadosUnicos.add(String(row[4]));
-
-    const evaluadoId = String(row[4]);
-    const puntuacion = parseFloat(row[7]);
-
-    if (evaluadoId && !isNaN(puntuacion) && puntuacion > 0) {
-      if (!promediosMap[evaluadoId]) promediosMap[evaluadoId] = { suma: 0, cantidad: 0 };
-      promediosMap[evaluadoId].suma += puntuacion;
-      promediosMap[evaluadoId].cantidad += 1;
-    }
-  });
-
-  const promediosFinales = {};
-  Object.entries(promediosMap).forEach(([id, d]) => {
-    promediosFinales[id] = d.cantidad > 0 ? (d.suma / d.cantidad).toFixed(2) : 0;
-  });
-
-  return {
-    totalVotos: votosData.length,
-    totalColaboradores,
-    votantesUnicos: votantesUnicos.size,
-    evaluadosUnicos: evaluadosUnicos.size,
-    tasaParticipacion: totalColaboradores > 0
-      ? ((votantesUnicos.size / totalColaboradores) * 100).toFixed(2)
-      : '0',
-    promedios: promediosFinales
-  };
-}
-
-function getTendenciasTemporales_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const votosSheet = ss.getSheetByName('Votos');
-
-  if (!votosSheet || votosSheet.getLastRow() <= 1) return [];
-
-  const votosData = votosSheet.getRange(2, 1, votosSheet.getLastRow() - 1, 10).getValues();
-  const tendencias = {};
-
-  votosData.forEach(row => {
-    const fecha = new Date(row[0]).toLocaleDateString('es-GT');
-    const puntuacion = parseFloat(row[7]);
-
-    if (!isNaN(puntuacion)) {
-      if (!tendencias[fecha]) tendencias[fecha] = { suma: 0, cantidad: 0 };
-      tendencias[fecha].suma += puntuacion;
-      tendencias[fecha].cantidad += 1;
-    }
-  });
-
-  return Object.entries(tendencias).map(([fecha, d]) => ({
-    fecha,
-    promedio: (d.suma / d.cantidad).toFixed(2),
-    votos: d.cantidad
-  }));
-}
-
-function calcularPromedioColaborador_(evaluadoId) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const votosSheet = ss.getSheetByName('Votos');
-
-  if (!votosSheet || votosSheet.getLastRow() <= 1) return 0;
-
-  const votosData = votosSheet.getRange(2, 1, votosSheet.getLastRow() - 1, 10).getValues();
-  let suma = 0, cantidad = 0;
-
-  votosData.forEach(row => {
-    if (String(row[4]) === String(evaluadoId) && row[7]) {
-      const p = parseFloat(row[7]);
-      if (!isNaN(p) && p > 0) { suma += p; cantidad++; }
-    }
-  });
-
-  return cantidad > 0 ? suma / cantidad : 0;
-}
-
-// ============= INICIALIZACIÓN =============
-
-function inicializarSedes_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss.getSheetByName('Sedes')) return;
-
-  const sheet = ss.insertSheet('Sedes');
-  sheet.getRange(1, 1).setValue('Sede').setFontWeight('bold');
-
-  const defaults = [
-    'Álamos', 'MiniTec Zona 3', 'MiniTec Zona 21',
-    'Plaza España', 'Mini Muni Zona 10', 'Mini Muni Zona 12', 'Mini Muni Zona 14'
-  ];
-  defaults.forEach((s, i) => sheet.getRange(i + 2, 1).setValue(s));
-}
-
-function inicializarParametrosSupervisores_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss.getSheetByName('Parametros Supervisores')) return;
-
-  const sheet = ss.insertSheet('Parametros Supervisores');
-  sheet.getRange(1, 1).setValue('Parametro').setFontWeight('bold');
-
-  ['Liderazgo', 'Comunicación', 'Gestión de Equipo', 'Toma de Decisiones']
-    .forEach((p, i) => sheet.getRange(i + 2, 1).setValue(p));
-}
-
-// ============= WEBHOOKS Y NOTIFICACIONES =============
-
-function dispararWebhook_(evento, datos) {
-  if (!CONFIG.WEBHOOK_URL) return;
-
-  try {
-    UrlFetchApp.fetch(CONFIG.WEBHOOK_URL, {
-      method: 'post',
-      payload: JSON.stringify({ evento, timestamp: new Date(), datos }),
-      contentType: 'application/json'
-    });
-  } catch (_) {}
-}
-
-function enviarEmailNotificacion_(destinatario, asunto, cuerpo) {
-  try {
-    GmailApp.sendEmail(destinatario, asunto, cuerpo, { htmlBody: cuerpo });
-    registrarAuditoria_('EMAIL_ENVIADO', destinatario, { asunto });
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e.toString() };
-  }
+/* Setup */
+function setupPasswordColumns(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Usuarios');
+  if(!sh){Logger.log('No sheet');return}
+  var hs=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  var ns=hs.map(function(h){return String(h).toLowerCase().trim()});
+  var nx=hs.length+1;
+  if(ns.indexOf('passwordhash')===-1){sh.getRange(1,nx).setValue('PasswordHash').setFontWeight('bold');nx++}
+  if(ns.indexOf('primeringreso')===-1){sh.getRange(1,nx).setValue('PrimerIngreso').setFontWeight('bold');for(var i=2;i<=sh.getLastRow();i++)sh.getRange(i,nx).setValue(true);nx++}
+  if(ns.indexOf('sede')===-1&&ns.indexOf('ubicacion')===-1){sh.getRange(1,nx).setValue('Sede').setFontWeight('bold');nx++}
+  if(ns.indexOf('foto')===-1&&ns.indexOf('fotourl')===-1){sh.getRange(1,nx).setValue('Foto').setFontWeight('bold');nx++}
+  if(ns.indexOf('permisos')===-1){sh.getRange(1,nx).setValue('Permisos').setFontWeight('bold');nx++}
+  if(!ss.getSheetByName('Sesiones')){var s=ss.insertSheet('Sesiones');s.appendRow(['Token','Usuario','Creado','Expira'])}
+  if(!ss.getSheetByName('Votos')){var v=ss.insertSheet('Votos');v.appendRow(['Timestamp','EmailVotante','IdVotante','NombreVotante','IdEvaluado','NombreEvaluado','Parametro','Puntuacion','Sede','Comentario'])}
+  Logger.log('Setup OK');
 }
