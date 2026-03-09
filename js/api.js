@@ -1,14 +1,12 @@
 /**
- * api.js — HTTP client (CORS-safe, no preflight)
+ * api.js v6 — HTTP client
  */
-// ══════════════════════════════════════════════
-//  CONFIGURAR TU URL DE DEPLOY AQUÍ:
-const API_URL = 'https://script.google.com/macros/s/AKfycbwNl8No3mV9hOH8Ko5rk1x_0fLYpHQfsJQy7jAncGLt-Sq4th9r9ZhEOIX06oYkkVtubA/exec';
-// ══════════════════════════════════════════════
-
-let _tk = null;
-const api = {
-  setToken(t){_tk=t}, getToken(){return _tk},
+// ══════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbz83jnGf3XdQybe-nPJ1fLf3omMJkDXc8-PFTJWdAO1DmucVwB05fIY1Ey1PUBduA2Pcg/exec';
+// ══════════════════════════════════════
+let _tk=null;
+const api={
+  setToken(t){_tk=t},getToken(){return _tk},
   async call(action,data={}){
     const r=await fetch(API_URL,{method:'POST',body:JSON.stringify({action,token:_tk,...data})});
     const j=await r.json();
@@ -28,11 +26,21 @@ const api = {
   eliminarUsuario(e){return this.call('eliminarUsuario',{email:e})},
   resetPassword(e){return this.call('resetPassword',{email:e})},
   async exportReport(){return(await this.call('exportReport')).data},
-  asignarEvaluadores(supEmail,evaluadores){return this.call('asignarEvaluadores',{supervisorEmail:supEmail,evaluadores:evaluadores})},
-  async getEvaluadoresSup(){return(await this.call('getEvaluadoresSup')).data},
   saveParametros(v){return this.call('saveParametros',{valores:v})},
   saveParametrosSup(v){return this.call('saveParametrosSupervisores',{valores:v})},
   saveAreas(v){return this.call('saveAreas',{valores:v})},
   saveSedes(v){return this.call('saveSedes',{valores:v})},
+  // Params per area
+  async getParametrosArea(){return(await this.call('getParametrosArea')).data},
+  saveParametrosArea(area,params){return this.call('saveParametrosArea',{area:area,parametros:params})},
+  // Supervisors
+  async getEvaluadoresSup(){return(await this.call('getEvaluadoresSup')).data},
+  asignarEvaluadores(supEmail,evaluadores){return this.call('asignarEvaluadores',{supervisorEmail:supEmail,evaluadores:evaluadores})},
+  async getColabsByArea(areas){return(await this.call('getColabsByArea',{areas:areas})).data},
+  // Convocatorias
+  async getConvocatorias(){return(await this.call('getConvocatorias')).data},
+  crearConvocatoria(d){return this.call('crearConvocatoria',d)},
+  activarConvocatoria(id){return this.call('activarConvocatoria',{id:id})},
+  cerrarConvocatoria(id){return this.call('cerrarConvocatoria',{id:id})},
 };
 window.api=api;

@@ -10,23 +10,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" defer></script>
 </head>
 <body>
-
   <!-- LOGIN -->
   <div class="login-wrap" id="loginScreen">
     <div class="login-box">
       <img class="login-avatar" id="loginAvatar" src="" alt="">
-      <div class="login-logo" id="loginLogoIcon">M</div>
+      <div class="login-logo">M</div>
       <div class="login-h">Bienvenido</div>
       <div class="login-sub">Sistema de Evaluación · Municipalidad de Guatemala</div>
-      <div class="login-field">
-        <label class="login-lbl">Usuario (email)</label>
-        <input type="email" class="login-in" id="loginUser" placeholder="tu@correo.com" autocomplete="username">
-      </div>
-      <div class="login-field">
-        <label class="login-lbl">Contraseña</label>
-        <input type="password" class="login-in has-toggle" id="loginPass" placeholder="••••••" autocomplete="current-password">
-        <button type="button" class="pwd-toggle">👁️</button>
-      </div>
+      <div class="login-field"><label class="login-lbl">Usuario (email)</label><input type="email" class="login-in" id="loginUser" placeholder="tu@correo.com" autocomplete="username"></div>
+      <div class="login-field"><label class="login-lbl">Contraseña</label><input type="password" class="login-in has-toggle" id="loginPass" placeholder="••••••" autocomplete="current-password"><button type="button" class="pwd-toggle">👁️</button></div>
       <button class="login-btn" id="loginBtn" onclick="App.login()">Ingresar</button>
       <div class="login-err" id="loginErr"></div>
     </div>
@@ -38,20 +30,10 @@
       <img class="login-avatar" id="pwdAvatar" src="" alt="">
       <div class="login-logo">🔐</div>
       <div class="login-h" id="pwdWelcome">¡Hola!</div>
-      <div class="login-sub">Es tu primer ingreso. Elegí una nueva contraseña segura para continuar.</div>
+      <div class="login-sub">Es tu primer ingreso. Elegí una nueva contraseña segura.</div>
       <div class="pwd-steps"><div class="pwd-dot active"></div><div class="pwd-dot"></div></div>
-      <div class="login-field">
-        <label class="login-lbl">Nueva contraseña</label>
-        <input type="password" class="login-in has-toggle" id="pwdNew" placeholder="Mínimo 6 caracteres">
-        <button type="button" class="pwd-toggle">👁️</button>
-        <div class="pwd-strength" id="pwdBar"></div>
-        <div class="pwd-hint">Usá letras, números y símbolos para mayor seguridad</div>
-      </div>
-      <div class="login-field">
-        <label class="login-lbl">Confirmar contraseña</label>
-        <input type="password" class="login-in has-toggle" id="pwdConfirm" placeholder="Repetir contraseña">
-        <button type="button" class="pwd-toggle">👁️</button>
-      </div>
+      <div class="login-field"><label class="login-lbl">Nueva contraseña</label><input type="password" class="login-in has-toggle" id="pwdNew" placeholder="Mínimo 6 caracteres"><button type="button" class="pwd-toggle">👁️</button><div class="pwd-strength" id="pwdBar"></div><div class="pwd-hint">Usá letras, números y símbolos</div></div>
+      <div class="login-field"><label class="login-lbl">Confirmar</label><input type="password" class="login-in has-toggle" id="pwdConfirm" placeholder="Repetir contraseña"><button type="button" class="pwd-toggle">👁️</button></div>
       <button class="login-btn" id="pwdBtn" onclick="App.changePwd()">Guardar Contraseña</button>
       <div class="login-err" id="pwdErr"></div>
     </div>
@@ -59,122 +41,109 @@
 
   <!-- APP -->
   <div class="app" id="appShell">
-    <header class="top">
-      <div class="top-in">
-        <div class="br"><div class="br-logo">M</div><div><h1>Evaluación de Colaboradores</h1><span>Municipalidad de Guatemala</span></div></div>
-        <div class="top-r">
-          <img class="top-avatar" id="topAvatar" src="" alt="">
-          <span class="ch ch-u" id="chipU">—</span>
-          <span class="ch ch-r" id="chipR">—</span>
-          <span class="ch ch-a" id="chipA">—</span>
-          <button class="btn-out" onclick="App.logout()">Cerrar sesión</button>
-        </div>
+    <header class="top"><div class="top-in">
+      <div class="br"><div class="br-logo">M</div><div><h1>Evaluación de Colaboradores</h1><span>Municipalidad de Guatemala</span></div></div>
+      <div class="top-r">
+        <span id="convBadge" style="font-size:.68rem;font-weight:600"></span>
+        <img class="top-avatar" id="topAvatar" src="" alt="">
+        <span class="ch ch-u" id="chipU">—</span>
+        <span class="ch ch-r" id="chipR">—</span>
+        <span class="ch ch-a" id="chipA">—</span>
+        <button class="btn-out" onclick="App.logout()">Salir</button>
       </div>
-    </header>
+    </div></header>
 
-    <nav class="nv">
-      <div class="nv-in">
-        <button class="nb on" data-tab="vot">🗳️ Votación</button>
-        <button class="nb hidden" data-tab="dash" id="navDash">📊 Dashboard</button>
-        <button class="nb hidden" data-tab="rep" id="navRep">📈 Reportes</button>
-        <button class="nb hidden" data-tab="adm" id="navAdm">⚙️ Administración</button>
-      </div>
-    </nav>
+    <nav class="nv"><div class="nv-in">
+      <button class="nb on" data-tab="vot">🗳️ Votación</button>
+      <button class="nb hidden" data-tab="dash" id="navDash">📊 Dashboard</button>
+      <button class="nb hidden" data-tab="rep" id="navRep">📈 Reportes</button>
+      <button class="nb hidden" data-tab="adm" id="navAdm">⚙️ Admin</button>
+    </div></nav>
 
     <div class="mn">
       <!-- Votación -->
       <section id="p-vot" class="pn on">
         <div class="wlc"><div class="wlc-line"></div><h2 id="welc">¡Hola!</h2><p>Evalúa a tus compañeros reconociendo su esfuerzo. Tus evaluaciones son confidenciales.</p></div>
         <div class="sts" id="vSt"></div>
-        <div class="tb">
-          <div class="sr"><input type="text" id="fS" placeholder="Buscar colaborador..."></div>
-          <select class="fp" id="fSede"><option value="">Todas las sedes</option></select>
-        </div>
+        <div class="tb"><div class="sr"><input type="text" id="fS" placeholder="Buscar colaborador..."></div><select class="fp" id="fSede"><option value="">Todas las sedes</option></select></div>
         <div id="areaCont"><div class="loader"><div class="spin"></div> Cargando...</div></div>
       </section>
 
       <!-- Dashboard -->
       <section id="p-dash" class="pn">
         <div class="sts" id="dSt"></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏆 Mejor Promedio por Área</span></div><div class="top-cards" id="topAreaCont"></div></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏢 Mejor Promedio por Sede</span></div><div class="top-cards" id="topSedeCont"></div></div>
-        <div class="ch-r">
-          <div class="cd"><div class="cd-h"><span class="cd-t">Distribución</span></div><canvas id="cD"></canvas></div>
-          <div class="cd"><div class="cd-h"><span class="cd-t">Tendencia</span></div><canvas id="cT"></canvas></div>
-        </div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏆 Mejor por Área</span></div><div class="top-cards" id="topAreaCont"></div></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏢 Mejor por Sede</span></div><div class="top-cards" id="topSedeCont"></div></div>
+        <div class="ch-r"><div class="cd"><div class="cd-h"><span class="cd-t">Distribución</span></div><canvas id="cD"></canvas></div><div class="cd"><div class="cd-h"><span class="cd-t">Tendencia</span></div><canvas id="cT"></canvas></div></div>
         <div class="cd"><div class="cd-h"><span class="cd-t">Por Día</span></div><div class="tw"><table id="tT"></table></div></div>
       </section>
 
       <!-- Reportes -->
       <section id="p-rep" class="pn">
-        <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 Excel</button><button class="btn bo" onclick="App.expP()">📄 PDF</button></div></div><div class="tw"><table id="tR"></table></div></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 CSV</button><button class="btn bo" onclick="App.expP()">📄 PDF</button></div></div><div class="tw"><table id="tR"></table></div></div>
       </section>
 
       <!-- Admin -->
       <section id="p-adm" class="pn">
         <div class="sts" id="aSt"></div>
+
+        <!-- Convocatorias -->
         <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">👤 Gestión de Usuarios</span><button class="btn ba" onclick="App.openNewUser()">+ Nuevo Usuario</button></div>
+          <div class="cd-h"><span class="cd-t">📋 Convocatorias (Períodos de Evaluación)</span><button class="btn ba" onclick="App.crearConv()">+ Nueva</button></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Creá una convocatoria por mes. Al activarla, las evaluaciones se registran ahí. Solo puede haber una activa a la vez.</p>
+          <div id="convCont"><div class="loader"><div class="spin"></div></div></div>
+        </div>
+
+        <!-- Usuarios -->
+        <div class="cd" style="margin-bottom:14px">
+          <div class="cd-h"><span class="cd-t">👤 Usuarios</span><button class="btn ba" onclick="App.openNewUser()">+ Nuevo</button></div>
           <div class="tw"><table class="usr-tbl"><thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Área</th><th>Sede</th><th>Acciones</th></tr></thead><tbody id="usrBody"></tbody></table></div>
         </div>
+
+        <!-- Supervisor Evaluator Picker -->
         <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">👔 Asignación de Evaluadores a Supervisores</span></div>
-          <p style="font-size:.78rem;color:var(--s5);margin-bottom:12px">Seleccioná qué áreas o personas pueden evaluar a cada supervisor. Podés cambiar esto en cualquier momento.</p>
-          <div id="supEvalCont"><div class="loader"><div class="spin"></div> Cargando...</div></div>
+          <div class="cd-h"><span class="cd-t">👔 Evaluadores de Supervisores</span></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Seleccioná áreas para ver sus colaboradores y elegí quiénes evalúan a cada supervisor. Podés cambiar esto cada mes.</p>
+          <div id="supEvalCont"><div class="loader"><div class="spin"></div></div></div>
         </div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Generales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('p')">💾 Guardar</button></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ps')">💾 Guardar</button></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.adm.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ar')">💾 Guardar</button></div>
-        <div class="cd"><div class="cd-h"><span class="cd-t">🏢 Sedes</span><button class="btn ba" onclick="App.adm.add('se')">+</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('se')">💾 Guardar</button></div>
+
+        <!-- Params por Área -->
+        <div class="cd" style="margin-bottom:14px">
+          <div class="cd-h"><span class="cd-t">📊 Parámetros por Área</span></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Cada área puede tener sus propios parámetros de evaluación. Si no se configuran, usa los globales.</p>
+          <div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div>
+        </div>
+
+        <!-- Global params -->
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Globales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('p')">💾</button></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ps')">💾</button></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.adm.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ar')">💾</button></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">🏢 Sedes</span><button class="btn ba" onclick="App.adm.add('se')">+</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('se')">💾</button></div>
       </section>
     </div>
   </div>
 
   <!-- MODAL: EVALUAR -->
-  <div class="mo-bg" id="evalOv">
-    <div class="mo">
-      <div class="mo-top">
-        <button class="mo-x" onclick="App.closeEval()">✕</button>
-        <div class="mo-profile">
-          <img class="mo-av" id="evalFoto" src="" alt="">
-          <div class="mo-nm" id="evalNm">—</div>
-          <div class="mo-mt" id="evalMt">—</div>
-        </div>
-      </div>
-      <div class="mo-bd" id="evalBd"></div>
-      <div class="mo-bd" style="padding-top:0"><div class="fg"><label class="fl">Comentario (opcional)</label><textarea class="fta" id="evalCom" placeholder="Comparte tu experiencia..."></textarea></div></div>
-      <div class="mo-ft"><button class="btn-sub" id="evalBtn" onclick="App.submitEval()">Enviar Evaluación</button></div>
-    </div>
-  </div>
+  <div class="mo-bg" id="evalOv"><div class="mo">
+    <div class="mo-top"><button class="mo-x" onclick="App.closeEval()">✕</button><div class="mo-profile"><img class="mo-av" id="evalFoto" src="" alt=""><div class="mo-nm" id="evalNm">—</div><div class="mo-mt" id="evalMt">—</div></div></div>
+    <div class="mo-bd" id="evalBd"></div>
+    <div class="mo-bd" style="padding-top:0"><div class="fg"><label class="fl">Comentario (opcional)</label><textarea class="fta" id="evalCom" placeholder="Comparte tu experiencia..."></textarea></div></div>
+    <div class="mo-ft"><button class="btn-sub" id="evalBtn" onclick="App.submitEval()">Enviar Evaluación</button></div>
+  </div></div>
 
   <!-- MODAL: NUEVO USUARIO -->
-  <div class="mo-bg" id="nuOv">
-    <div class="mo">
-      <div class="mo-top" style="padding-bottom:0"><div class="mo-inf"><div class="mo-nm">Nuevo Usuario</div><div class="mo-mt">Completá los datos</div></div><button class="mo-x" onclick="App.closeNewUser()">✕</button></div>
-      <div class="mo-bd">
-        <div class="fg"><label class="fl">Email</label><input class="login-in" id="nuEmail" placeholder="usuario@correo.com"></div>
-        <div class="fg"><label class="fl">Nombre completo</label><input class="login-in" id="nuNombre" placeholder="Nombre Apellido"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="fg"><label class="fl">Rol</label><select class="fp" id="nuRol" style="width:100%"><option value="votante">Votante</option><option value="evaluado">Evaluado</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
-          <div class="fg"><label class="fl">Área</label><select class="fp" id="nuArea" style="width:100%"><option value="">— Seleccionar —</option></select></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="fg"><label class="fl">Sede</label><select class="fp" id="nuSede" style="width:100%"><option value="">— Seleccionar —</option></select></div>
-          <div class="fg"><label class="fl">Contraseña inicial</label><input class="login-in" type="password" id="nuPwd" placeholder="Temporal"></div>
-        </div>
-        <div class="fg"><label class="fl">Permisos adicionales</label>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
-            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="nu-perm"> Dashboard</label>
-            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="nu-perm"> Reportes</label>
-            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="admin" class="nu-perm"> Admin</label>
-            <label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="nu-perm"> Usuarios</label>
-          </div>
-        </div>
-        <div class="fg"><label class="fl">URL de foto (opcional)</label><input class="login-in" id="nuFoto" placeholder="https://drive.google.com/..."></div>
-      </div>
-      <div class="mo-ft"><button class="btn-sub" onclick="App.saveNewUser()">Crear Usuario</button></div>
+  <div class="mo-bg" id="nuOv"><div class="mo">
+    <div class="mo-top" style="padding-bottom:0"><div class="mo-inf" style="flex:1"><div class="mo-nm">Nuevo Usuario</div><div class="mo-mt">Completá los datos</div></div><button class="mo-x" onclick="App.closeNewUser()">✕</button></div>
+    <div class="mo-bd">
+      <div class="fg"><label class="fl">Email</label><input class="login-in" id="nuEmail" placeholder="usuario@correo.com"></div>
+      <div class="fg"><label class="fl">Nombre completo</label><input class="login-in" id="nuNombre" placeholder="Nombre Apellido"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="fg"><label class="fl">Rol</label><select class="fp" id="nuRol" style="width:100%"><option value="votante">Votante</option><option value="evaluado">Evaluado</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div><div class="fg"><label class="fl">Área</label><select class="fp" id="nuArea" style="width:100%"><option value="">—</option></select></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="fg"><label class="fl">Sede</label><select class="fp" id="nuSede" style="width:100%"><option value="">—</option></select></div><div class="fg"><label class="fl">Contraseña</label><input class="login-in" type="password" id="nuPwd" placeholder="Temporal"></div></div>
+      <div class="fg"><label class="fl">Permisos adicionales</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="nu-perm"> Dashboard</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="nu-perm"> Reportes</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="admin" class="nu-perm"> Admin</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="nu-perm"> Usuarios</label></div></div>
+      <div class="fg"><label class="fl">Foto (URL)</label><input class="login-in" id="nuFoto" placeholder="https://drive.google.com/..."></div>
     </div>
-  </div>
+    <div class="mo-ft"><button class="btn-sub" onclick="App.saveNewUser()">Crear Usuario</button></div>
+  </div></div>
 
   <div class="tz" id="toasts"></div>
   <script src="js/api.js"></script>
