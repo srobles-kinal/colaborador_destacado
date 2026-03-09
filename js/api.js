@@ -3,7 +3,7 @@
  */
 // ══════════════════════════════════════════════
 //  CONFIGURAR TU URL DE DEPLOY AQUÍ:
-const API_URL = 'https://script.google.com/macros/s/AKfycbzQKlo-9PkokxLZPSJ61ueJMIQpsB_Aw0-ydORn4r_cgHAer1Dz8bZQ8Vt5hNnA5hf_9A/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwNl8No3mV9hOH8Ko5rk1x_0fLYpHQfsJQy7jAncGLt-Sq4th9r9ZhEOIX06oYkkVtubA/exec';
 // ══════════════════════════════════════════════
 
 let _tk = null;
@@ -28,6 +28,8 @@ const api = {
   eliminarUsuario(e){return this.call('eliminarUsuario',{email:e})},
   resetPassword(e){return this.call('resetPassword',{email:e})},
   async exportReport(){return(await this.call('exportReport')).data},
+  asignarEvaluadores(supEmail,evaluadores){return this.call('asignarEvaluadores',{supervisorEmail:supEmail,evaluadores:evaluadores})},
+  async getEvaluadoresSup(){return(await this.call('getEvaluadoresSup')).data},
   saveParametros(v){return this.call('saveParametros',{valores:v})},
   saveParametrosSup(v){return this.call('saveParametrosSupervisores',{valores:v})},
   saveAreas(v){return this.call('saveAreas',{valores:v})},

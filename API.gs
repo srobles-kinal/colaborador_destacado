@@ -29,6 +29,8 @@ function doPost(e){
       case 'saveParametros':case 'saveParametrosSupervisores':case 'saveAreas':case 'saveSedes':return jr_(saveList_(b));
       case 'resetPassword':return jr_(resetPwd_(b));
       case 'exportReport':return wA_(b,exportReport_);
+      case 'asignarEvaluadores':return jr_(asignarEvaluadores_(b));
+      case 'getEvaluadoresSup':return wA_(b,getEvaluadoresSup_);
       default:return err_('Acción: '+a)
     }
   }catch(x){return err_(x.toString())}
@@ -57,6 +59,8 @@ function hm_(sh){
     else if(/^(colaborador)$/.test(h)){if(m.nombre===undefined)m.nombre=i;}
     // permisos field
     else if(/^(permisos|permissions)$/.test(h))m.permisos=i;
+    // evaluadores asignados al supervisor (comma-separated emails or areas)
+    else if(/^(evaluadores|evaluadores.?sup|asignados)/.test(h))m.evaluadores=i;
   }
   _hc[n]=m;return m;
 }
@@ -77,8 +81,8 @@ function findU_(email){
         activo:m.activo!==undefined?isT_(d[i][m.activo]):true,
         pwd:String(cv_(d[i],m,'pwd','')),primer:m.primer!==undefined?isT_(d[i][m.primer]):false,
         sede:String(cv_(d[i],m,'sede','')),foto:dUrl_(cv_(d[i],m,'foto','')),
-        permisos:permisos?permisos.split(',').map(function(p){return p.trim()}):[]}
-    }
+        permisos:permisos?permisos.split(',').map(function(p){return p.trim()}):[],
+        evaluadores:m.evaluadores!==undefined?String(d[i][m.evaluadores]):''}
   }
   return null;
 }
@@ -136,11 +140,16 @@ function getAllData_(ses){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var allCols=readColaboradores_(ss);
   
-  // Get all supervisors (everyone can evaluate them)
-  var supervisores=allCols.filter(function(c){
-    // Read role from Usuarios
+  // Get supervisors and check who can evaluate them
+  var supervisores=[];
+  allCols.forEach(function(c){
     var u=findU_(c.email);
-    return u&&(u.rol==='supervisor');
+    if(u&&u.rol==='supervisor'){
+      // evaluadores field: comma-separated list of emails or area names
+      // If empty, supervisor is visible to everyone (backwards compatible)
+      var evList=u.evaluadores?u.evaluadores.split(',').map(function(x){return x.trim().toLowerCase()}).filter(Boolean):[];
+      supervisores.push({colab:c,evaluadoresList:evList});
+    }
   });
   
   // FILTERING LOGIC
@@ -157,10 +166,22 @@ function getAllData_(ses){
     }else{
       cols=allCols;
     }
-    // Add supervisors that aren't already in the filtered list
+    // Add supervisors this user is allowed to evaluate
     var colEmails={};cols.forEach(function(c){colEmails[c.email.toLowerCase()]=true});
-    supervisores.forEach(function(s){
-      if(!colEmails[s.email.toLowerCase()]){cols.push(s);colEmails[s.email.toLowerCase()]=true}
+    var usrEmail=usr.email.toLowerCase();
+    var usrArea=(usr.area||'').toLowerCase().trim();
+    supervisores.forEach(function(sup){
+      if(colEmails[sup.colab.email.toLowerCase()])return; // already in list
+      // If evaluadoresList is empty, visible to all
+      if(sup.evaluadoresList.length===0){
+        cols.push(sup.colab);colEmails[sup.colab.email.toLowerCase()]=true;
+        return;
+      }
+      // Check if user's email or area is in the list
+      var allowed=sup.evaluadoresList.some(function(e){
+        return e===usrEmail||e===usrArea;
+      });
+      if(allowed){cols.push(sup.colab);colEmails[sup.colab.email.toLowerCase()]=true}
     });
   }
   
@@ -324,15 +345,53 @@ function saveList_(b){
   return{status:'ok',success:true};
 }
 
-/* Reset Password (admin only) */
+/* Assign evaluators to a supervisor (admin only) */
+function asignarEvaluadores_(b){
+  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var sup=findU_(b.supervisorEmail);if(!sup)return{status:'error',message:'Supervisor no encontrado'};
+  if(sup.rol!=='supervisor')return{status:'error',message:'El usuario no es supervisor'};
+  // b.evaluadores = comma-separated string of emails and/or area names
+  if(sup.m.evaluadores!==undefined){
+    sup.sh.getRange(sup.ri+1,sup.m.evaluadores+1).setValue(b.evaluadores||'');
+  }else{
+    return{status:'error',message:'Columna Evaluadores no encontrada. Ejecutar setupPasswordColumns().'};
+  }
+  log_('EVAL_ASSIGN',s.usuario,{sup:b.supervisorEmail,eval:b.evaluadores});
+  return{status:'ok',success:true,message:'Evaluadores asignados'};
+}
+
+/* Get evaluator config for a supervisor */
+function getEvaluadoresSup_(ses,b){
+  var usr=findU_(ses.usuario);if(!usr||usr.rol!=='admin')throw new Error('No autorizado');
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  // Get all supervisors with their evaluadores field
+  var sh=ss.getSheetByName('Usuarios');if(!sh)return[];
+  var m=hm_(sh),d=sh.getDataRange().getValues();
+  var out=[];
+  for(var i=1;i<d.length;i++){
+    var rol=String(cv_(d[i],m,'rol','')).toLowerCase().trim();
+    if(rol==='supervisor'){
+      out.push({
+        email:String(cv_(d[i],m,'email','')),
+        nombre:String(cv_(d[i],m,'nombre','')),
+        evaluadores:m.evaluadores!==undefined?String(d[i][m.evaluadores]):''
+      });
+    }
+  }
+  return out;
+}
+
+/* Reset Password (admin only) - sets default pwd, forces change on next login */
 function resetPwd_(b){
   var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
   var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
   var u=findU_(b.email);if(!u)return{status:'error',message:'No encontrado'};
-  if(u.m.pwd!==undefined)u.sh.getRange(u.ri+1,u.m.pwd+1).setValue('');
+  var defaultPwd='Muni2025';
+  if(u.m.pwd!==undefined)u.sh.getRange(u.ri+1,u.m.pwd+1).setValue(sha256_(defaultPwd));
   if(u.m.primer!==undefined)u.sh.getRange(u.ri+1,u.m.primer+1).setValue(true);
   log_('PWD_RESET',s.usuario,{t:b.email});
-  return{status:'ok',success:true,message:'Contraseña reiniciada'};
+  return{status:'ok',success:true,message:'Contraseña reiniciada a: '+defaultPwd,tempPassword:defaultPwd};
 }
 
 /* Export Report - returns CSV-ready array */
@@ -403,6 +462,7 @@ function setupPasswordColumns(){
   if(ns.indexOf('sede')===-1&&ns.indexOf('ubicacion')===-1){sh.getRange(1,nx).setValue('Sede').setFontWeight('bold');nx++}
   if(ns.indexOf('foto')===-1&&ns.indexOf('fotourl')===-1){sh.getRange(1,nx).setValue('Foto').setFontWeight('bold');nx++}
   if(ns.indexOf('permisos')===-1){sh.getRange(1,nx).setValue('Permisos').setFontWeight('bold');nx++}
+  if(ns.indexOf('evaluadores')===-1){sh.getRange(1,nx).setValue('Evaluadores').setFontWeight('bold');nx++}
   if(!ss.getSheetByName('Sesiones')){var s=ss.insertSheet('Sesiones');s.appendRow(['Token','Usuario','Creado','Expira'])}
   if(!ss.getSheetByName('Votos')){var v=ss.insertSheet('Votos');v.appendRow(['Timestamp','EmailVotante','IdVotante','NombreVotante','IdEvaluado','NombreEvaluado','Parametro','Puntuacion','Sede','Comentario'])}
   Logger.log('Setup OK');

@@ -117,6 +117,11 @@
           <div class="cd-h"><span class="cd-t">👤 Gestión de Usuarios</span><button class="btn ba" onclick="App.openNewUser()">+ Nuevo Usuario</button></div>
           <div class="tw"><table class="usr-tbl"><thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Área</th><th>Sede</th><th>Acciones</th></tr></thead><tbody id="usrBody"></tbody></table></div>
         </div>
+        <div class="cd" style="margin-bottom:14px">
+          <div class="cd-h"><span class="cd-t">👔 Asignación de Evaluadores a Supervisores</span></div>
+          <p style="font-size:.78rem;color:var(--s5);margin-bottom:12px">Seleccioná qué áreas o personas pueden evaluar a cada supervisor. Podés cambiar esto en cualquier momento.</p>
+          <div id="supEvalCont"><div class="loader"><div class="spin"></div> Cargando...</div></div>
+        </div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Generales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('p')">💾 Guardar</button></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ps')">💾 Guardar</button></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.adm.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ar')">💾 Guardar</button></div>

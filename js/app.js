@@ -241,7 +241,6 @@ const App={
       $('dSt').innerHTML=
         '<div class="st sb"><div class="st-i">👥</div><div class="st-n">'+(a.totalColaboradores||0)+'</div><div class="st-l">Colaboradores</div></div>'+
         '<div class="st sg"><div class="st-i">✅</div><div class="st-n">'+(a.evaluadosUnicos||0)+'</div><div class="st-l">Calificados</div></div>'+
-        '<div class="st sl"><div class="st-i">📝</div><div class="st-n">'+(a.totalVotos||0)+'</div><div class="st-l">Total Votos</div></div>'+
         '<div class="st sa"><div class="st-i">📊</div><div class="st-n">'+(a.tasaParticipacion||0)+'%</div><div class="st-l">Participación</div></div>';
 
       // Top per Area
@@ -293,7 +292,7 @@ const App={
         '<div class="st sb"><div class="st-i">👥</div><div class="st-n">'+(s.totalColaboradores||0)+'</div><div class="st-l">Colaboradores</div></div>'+
         '<div class="st sl"><div class="st-i">📋</div><div class="st-n">'+(s.totalAreas||0)+'</div><div class="st-l">Áreas</div></div>';
       ADM={p:s.parametros||[],ps:s.parametrosSupervisores||[],ar:s.areas||[],se:s.sedes||[]};
-      this.adm.renderAll();this.loadUsers();
+      this.adm.renderAll();this.loadUsers();this.loadSupEvals();
     }catch(e){toast(e.message,'err')}
   },
 
@@ -329,8 +328,15 @@ const App={
   },
 
   async resetPwd(email){
-    if(!confirm('¿Reiniciar contraseña de '+email+'?\nEl usuario deberá crear una nueva al ingresar.'))return;
-    try{const r=await api.resetPassword(email);if(r.success)toast('Contraseña reiniciada','ok');else toast(r.message,'err')}catch(e){toast(e.message,'err')}
+    if(!confirm('¿Reiniciar contraseña de '+email+'?'))return;
+    try{
+      const r=await api.resetPassword(email);
+      if(r.success){
+        const pwd=r.tempPassword||'Muni2025';
+        toast('Contraseña reiniciada','ok');
+        alert('Contraseña temporal para '+email+':\n\n'+pwd+'\n\nEl usuario deberá cambiarla al ingresar.');
+      }else toast(r.message,'err');
+    }catch(e){toast(e.message,'err')}
   },
 
   openNewUser(){$('nuEmail').value='';$('nuNombre').value='';$('nuRol').value='votante';$('nuPwd').value='';
@@ -359,6 +365,44 @@ const App={
   delUser(email){
     if(!confirm('¿Eliminar '+email+'?'))return;
     api.eliminarUsuario(email).then(r=>{if(r.success){toast('Eliminado','ok');this.loadUsers()}else toast(r.message,'err')}).catch(e=>toast(e.message,'err'));
+  },
+
+  async loadSupEvals(){
+    const cont=$('supEvalCont');
+    if(!cont)return;
+    try{
+      const sups=await api.getEvaluadoresSup();
+      const areas=ADM.ar||[];
+      if(!sups||!sups.length){cont.innerHTML='<div class="empty"><div class="empty-t">No hay supervisores registrados</div></div>';return}
+      cont.innerHTML=sups.map(s=>{
+        const currentEvals=(s.evaluadores||'').split(',').map(e=>e.trim().toLowerCase()).filter(Boolean);
+        return '<div style="margin-bottom:16px;padding:14px;border:1px solid var(--s2);border-radius:var(--r);background:var(--s0)">'+
+          '<div style="font-weight:700;font-size:.85rem;margin-bottom:8px">'+esc(s.nombre)+' <span style="font-weight:400;color:var(--s4);font-size:.75rem">('+esc(s.email)+')</span></div>'+
+          '<div class="fl" style="margin-bottom:4px">Áreas que pueden evaluarlo:</div>'+
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'+
+            areas.map(a=>'<label style="font-size:.74rem;display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--w);padding:4px 10px;border-radius:6px;border:1px solid var(--s2)"><input type="checkbox" class="sup-area-cb" data-sup="'+esc(s.email)+'" value="'+esc(a)+'"'+(currentEvals.indexOf(a.toLowerCase())>=0?' checked':'')+'>'+esc(a)+'</label>').join('')+
+          '</div>'+
+          '<div class="fl" style="margin-bottom:4px">Emails específicos (separados por coma):</div>'+
+          '<input class="adm-in sup-emails" data-sup="'+esc(s.email)+'" value="'+esc(currentEvals.filter(function(e){return e.indexOf('@')>=0}).join(', '))+'" placeholder="email1@..., email2@..." style="margin-bottom:8px">'+
+          '<button class="btn bp" style="font-size:.72rem;padding:6px 12px" onclick="App.saveSupEvals(\''+esc(s.email)+'\')">💾 Guardar asignación</button>'+
+        '</div>';
+      }).join('');
+    }catch(e){cont.innerHTML='<div class="empty"><div class="empty-t">'+e.message+'</div></div>'}
+  },
+
+  async saveSupEvals(supEmail){
+    // Collect checked areas
+    const areaCbs=document.querySelectorAll('.sup-area-cb[data-sup="'+supEmail+'"]');
+    const areas=[];areaCbs.forEach(cb=>{if(cb.checked)areas.push(cb.value)});
+    // Collect specific emails
+    const emailInput=document.querySelector('.sup-emails[data-sup="'+supEmail+'"]');
+    const emails=emailInput?emailInput.value.split(',').map(e=>e.trim()).filter(Boolean):[];
+    // Combine
+    const all=areas.concat(emails).join(',');
+    try{
+      const r=await api.asignarEvaluadores(supEmail,all);
+      if(r.success)toast('Evaluadores asignados','ok');else toast(r.message,'err');
+    }catch(e){toast(e.message,'err')}
   },
 
   adm:{
