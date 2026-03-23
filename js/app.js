@@ -21,10 +21,54 @@ document.querySelectorAll('.nb').forEach(b=>{b.addEventListener('click',()=>{
 })});
 document.querySelectorAll('.pwd-toggle').forEach(btn=>{btn.addEventListener('click',()=>{const i=btn.previousElementSibling;if(i.type==='password'){i.type='text';btn.textContent='🙈'}else{i.type='password';btn.textContent='👁️'}})});
 document.addEventListener('click',function(e){const btn=e.target.closest('.rb-b');if(!btn)return;e.preventDefault();const p=btn.parentElement.dataset.param;const v=parseInt(btn.dataset.v);if(!p||isNaN(v))return;EV.ratings[p]=v;btn.parentElement.querySelectorAll('.rb-b').forEach(b=>{b.classList.toggle('on',parseInt(b.dataset.v)<=v)})});
-document.addEventListener('DOMContentLoaded',()=>{
-  $('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')App.login()});
-  $('pwdConfirm').addEventListener('keydown',e=>{if(e.key==='Enter')App.changePwd()});
-  const pi=$('pwdNew');if(pi)pi.addEventListener('input',()=>{const v=pi.value,b=$('pwdBar');if(!b)return;b.className='pwd-strength '+(v.length<6?'weak':v.length<10?'medium':'strong')});
+// ── Session persistence & inactivity timer ──
+const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
+let _inactivityTimer = null;
+
+function resetInactivity() {
+  if (_inactivityTimer) clearTimeout(_inactivityTimer);
+  _inactivityTimer = setTimeout(() => {
+    toast('Sesión expirada por inactividad', 'info');
+    App.logout();
+  }, INACTIVITY_MS);
+}
+// Track user activity
+['click','keydown','mousemove','touchstart','scroll'].forEach(evt => {
+  document.addEventListener(evt, resetInactivity, { passive: true });
+});
+
+function saveSession(token, user) {
+  localStorage.setItem('ev_token', token);
+  localStorage.setItem('ev_user', JSON.stringify(user));
+  localStorage.setItem('ev_time', Date.now().toString());
+}
+function clearSession() {
+  localStorage.removeItem('ev_token');
+  localStorage.removeItem('ev_user');
+  localStorage.removeItem('ev_time');
+}
+function getSavedSession() {
+  const tk = localStorage.getItem('ev_token');
+  const usr = localStorage.getItem('ev_user');
+  const time = parseInt(localStorage.getItem('ev_time') || '0');
+  if (!tk || !usr) return null;
+  // Expire after 8 hours (server also expires, this is just client-side cleanup)
+  if (Date.now() - time > 8 * 60 * 60 * 1000) { clearSession(); return null; }
+  try { return { token: tk, user: JSON.parse(usr) }; } catch (e) { clearSession(); return null; }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') App.login() });
+  $('pwdConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') App.changePwd() });
+  const pi = $('pwdNew');
+  if (pi) pi.addEventListener('input', () => { const v = pi.value, b = $('pwdBar'); if (!b) return; b.className = 'pwd-strength ' + (v.length < 6 ? 'weak' : v.length < 10 ? 'medium' : 'strong') });
+  // Auto-login from saved session
+  const saved = getSavedSession();
+  if (saved) {
+    api.setToken(saved.token);
+    USER = saved.user;
+    App.start();
+  }
 });
 
 const App={
@@ -35,7 +79,7 @@ const App={
     const btn=$('loginBtn');btn.disabled=true;btn.textContent='Ingresando...';
     try{
       const res=await api.login(u,p);
-      if(res.success){api.setToken(res.token);USER=res.usuario;
+      if(res.success){api.setToken(res.token);USER=res.usuario;saveSession(res.token,res.usuario);
         if(USER.primerIngreso){$('pwdOv').classList.add('open');$('pwdWelcome').textContent='¡Hola, '+(USER.nombre||USER.email.split('@')[0])+'!';const pa=$('pwdAvatar');if(pa&&USER.foto){pa.src=USER.foto;pa.classList.add('show')}}
         else this.start();
       }else $('loginErr').textContent=res.message||'Error';
@@ -50,8 +94,8 @@ const App={
     try{const r=await api.cambiarPassword(n);if(r.success){$('pwdOv').classList.remove('open');toast('Contraseña actualizada','ok');this.start()}else $('pwdErr').textContent=r.message}catch(e){$('pwdErr').textContent=e.message}
     btn.disabled=false;btn.textContent='Guardar Contraseña';
   },
-  async logout(){try{await api.logout()}catch(e){}api.setToken(null);USER=null;DATA=null;$('appShell').classList.remove('show');$('loginScreen').style.display='flex';$('loginPass').value='';$('loginErr').textContent=''},
-  async start(){$('loginScreen').style.display='none';$('appShell').classList.add('show');try{DATA=await api.getAllData();this.render();toast('Datos cargados','ok')}catch(e){toast(e.message,'err')}},
+  async logout(){try{await api.logout()}catch(e){}api.setToken(null);USER=null;DATA=null;clearSession();if(_inactivityTimer)clearTimeout(_inactivityTimer);$('appShell').classList.remove('show');$('loginScreen').style.display='flex';$('loginPass').value='';$('loginErr').textContent=''},
+  async start(){$('loginScreen').style.display='none';$('appShell').classList.add('show');resetInactivity();try{DATA=await api.getAllData();this.render();toast('Datos cargados','ok')}catch(e){if(e.message.indexOf('Sesión')>=0||e.message.indexOf('invalid')>=0){clearSession();this.logout();return}toast(e.message,'err')}},
 
   // ── Render ──
   render(){
