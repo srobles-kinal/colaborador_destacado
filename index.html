@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Evaluación de Colaboradores</title>
+  <title>Colaborador Destacado</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
@@ -16,7 +16,7 @@
       <img class="login-avatar" id="loginAvatar" src="" alt="">
       <div class="login-logo">M</div>
       <div class="login-h">Bienvenido</div>
-      <div class="login-sub">Sistema de Evaluación · Municipalidad de Guatemala</div>
+      <div class="login-sub">Colaborador Destacado · Municipalidad de Guatemala</div>
       <div class="login-field"><label class="login-lbl">Usuario (email)</label><input type="email" class="login-in" id="loginUser" placeholder="tu@correo.com" autocomplete="username"></div>
       <div class="login-field"><label class="login-lbl">Contraseña</label><input type="password" class="login-in has-toggle" id="loginPass" placeholder="••••••" autocomplete="current-password"><button type="button" class="pwd-toggle">👁️</button></div>
       <button class="login-btn" id="loginBtn" onclick="App.login()">Ingresar</button>
@@ -33,7 +33,7 @@
       <div class="login-sub">Es tu primer ingreso. Elegí una nueva contraseña segura.</div>
       <div class="pwd-steps"><div class="pwd-dot active"></div><div class="pwd-dot"></div></div>
       <div class="login-field"><label class="login-lbl">Nueva contraseña</label><input type="password" class="login-in has-toggle" id="pwdNew" placeholder="Mínimo 6 caracteres"><button type="button" class="pwd-toggle">👁️</button><div class="pwd-strength" id="pwdBar"></div><div class="pwd-hint">Usá letras, números y símbolos</div></div>
-      <div class="login-field"><label class="login-lbl">Confirmar</label><input type="password" class="login-in has-toggle" id="pwdConfirm" placeholder="Repetir contraseña"><button type="button" class="pwd-toggle">👁️</button></div>
+      <div class="login-field"><label class="login-lbl">Confirmar</label><input type="password" class="login-in has-toggle" id="pwdConfirm" placeholder="Repetir"><button type="button" class="pwd-toggle">👁️</button></div>
       <button class="login-btn" id="pwdBtn" onclick="App.changePwd()">Guardar Contraseña</button>
       <div class="login-err" id="pwdErr"></div>
     </div>
@@ -42,13 +42,12 @@
   <!-- APP -->
   <div class="app" id="appShell">
     <header class="top"><div class="top-in">
-      <div class="br"><div class="br-logo">M</div><div><h1>Evaluación de Colaboradores</h1><span>Municipalidad de Guatemala</span></div></div>
+      <div class="br"><div class="br-logo">M</div><div><h1>Colaborador Destacado</h1><span>Municipalidad de Guatemala</span></div></div>
       <div class="top-r">
         <span id="convBadge" style="font-size:.68rem;font-weight:600"></span>
         <img class="top-avatar" id="topAvatar" src="" alt="">
         <span class="ch ch-u" id="chipU">—</span>
         <span class="ch ch-r" id="chipR">—</span>
-        <span class="ch ch-a" id="chipA">—</span>
         <button class="btn-out" onclick="App.logout()">Salir</button>
       </div>
     </div></header>
@@ -57,13 +56,17 @@
       <button class="nb on" data-tab="vot">🗳️ Votación</button>
       <button class="nb hidden" data-tab="dash" id="navDash">📊 Dashboard</button>
       <button class="nb hidden" data-tab="rep" id="navRep">📈 Reportes</button>
-      <button class="nb hidden" data-tab="adm" id="navAdm">⚙️ Admin</button>
+      <!-- Admin modules as separate tabs -->
+      <button class="nb hidden" data-tab="usuarios" id="navUsuarios">👤 Usuarios</button>
+      <button class="nb hidden" data-tab="elecciones" id="navElecciones">🗓️ Elecciones</button>
+      <button class="nb hidden" data-tab="evaluadores" id="navEvaluadores">👔 Evaluadores</button>
+      <button class="nb hidden" data-tab="config" id="navConfig">⚙️ Configuración</button>
     </div></nav>
 
     <div class="mn">
       <!-- Votación -->
       <section id="p-vot" class="pn on">
-        <div class="wlc"><div class="wlc-line"></div><h2 id="welc">¡Hola!</h2><p>Evalúa a tus compañeros reconociendo su esfuerzo. Tus evaluaciones son confidenciales.</p></div>
+        <div class="wlc"><div class="wlc-line"></div><h2 id="welc">¡Hola!</h2><p>Evalúa a tus compañeros reconociendo su esfuerzo y dedicación.</p></div>
         <div class="sts" id="vSt"></div>
         <div class="tb"><div class="sr"><input type="text" id="fS" placeholder="Buscar colaborador..."></div><select class="fp" id="fSede"><option value="">Todas las sedes</option></select></div>
         <div id="areaCont"><div class="loader"><div class="spin"></div> Cargando...</div></div>
@@ -80,41 +83,39 @@
 
       <!-- Reportes -->
       <section id="p-rep" class="pn">
-        <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 CSV</button><button class="btn bo" onclick="App.expP()">📄 PDF</button></div></div><div class="tw"><table id="tR"></table></div></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 CSV</button></div></div><div class="tw"><table id="tR"></table></div></div>
       </section>
 
-      <!-- Admin -->
-      <section id="p-adm" class="pn">
-        <div class="sts" id="aSt"></div>
-
-        <!-- Convocatorias -->
-        <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">📋 Convocatorias (Períodos de Evaluación)</span><button class="btn ba" onclick="App.crearConv()">+ Nueva</button></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Creá una convocatoria por mes. Al activarla, las evaluaciones se registran ahí. Solo puede haber una activa a la vez.</p>
-          <div id="convCont"><div class="loader"><div class="spin"></div></div></div>
-        </div>
-
-        <!-- Usuarios -->
-        <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">👤 Usuarios</span><button class="btn ba" onclick="App.openNewUser()">+ Nuevo</button></div>
+      <!-- TAB: USUARIOS (permiso: usuarios) -->
+      <section id="p-usuarios" class="pn">
+        <div class="cd">
+          <div class="cd-h"><span class="cd-t">👤 Gestión de Usuarios</span><button class="btn ba" onclick="App.openNewUser()">+ Nuevo</button></div>
           <div class="tw"><table class="usr-tbl"><thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Área</th><th>Sede</th><th>Acciones</th></tr></thead><tbody id="usrBody"></tbody></table></div>
         </div>
+      </section>
 
-        <!-- Supervisor Evaluator Picker -->
+      <!-- TAB: ELECCIONES (permiso: elecciones) -->
+      <section id="p-elecciones" class="pn">
+        <div class="cd">
+          <div class="cd-h"><span class="cd-t">🗓️ Elecciones (Períodos de Evaluación)</span><button class="btn ba" onclick="App.crearElec()">+ Nueva Elección</button></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Creá una elección por mes. Al activarla, las evaluaciones se registran ahí. Solo puede haber una activa.</p>
+          <div id="elecCont"><div class="loader"><div class="spin"></div></div></div>
+        </div>
+      </section>
+
+      <!-- TAB: EVALUADORES (permiso: evaluadores) -->
+      <section id="p-evaluadores" class="pn">
         <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">👔 Evaluadores de Supervisores</span></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Seleccioná áreas para ver sus colaboradores y elegí quiénes evalúan a cada supervisor. Podés cambiar esto cada mes.</p>
+          <div class="cd-h"><span class="cd-t">👔 Asignación de Evaluadores</span></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Seleccioná áreas y colaboradores que pueden evaluar a cada supervisor o evaluador. Podés cambiar esto cada mes.</p>
           <div id="supEvalCont"><div class="loader"><div class="spin"></div></div></div>
         </div>
+      </section>
 
-        <!-- Params por Área -->
-        <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">📊 Parámetros por Área</span></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Cada área puede tener sus propios parámetros de evaluación. Si no se configuran, usa los globales.</p>
-          <div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div>
-        </div>
-
-        <!-- Global params -->
+      <!-- TAB: CONFIGURACIÓN (permiso: parametros) -->
+      <section id="p-config" class="pn">
+        <div class="sts" id="cfgSt"></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📊 Parámetros por Área</span></div><p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Cada área puede tener sus propios parámetros. Si no, usa los globales.</p><div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Globales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('p')">💾</button></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ps')">💾</button></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.adm.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ar')">💾</button></div>
@@ -133,16 +134,41 @@
 
   <!-- MODAL: NUEVO USUARIO -->
   <div class="mo-bg" id="nuOv"><div class="mo">
-    <div class="mo-top" style="padding-bottom:0"><div class="mo-inf" style="flex:1"><div class="mo-nm">Nuevo Usuario</div><div class="mo-mt">Completá los datos</div></div><button class="mo-x" onclick="App.closeNewUser()">✕</button></div>
+    <div class="mo-top" style="padding-bottom:0"><div style="flex:1"><div class="mo-nm">Nuevo Usuario</div><div class="mo-mt">Completá los datos</div></div><button class="mo-x" onclick="App.closeNewUser()">✕</button></div>
     <div class="mo-bd">
       <div class="fg"><label class="fl">Email</label><input class="login-in" id="nuEmail" placeholder="usuario@correo.com"></div>
       <div class="fg"><label class="fl">Nombre completo</label><input class="login-in" id="nuNombre" placeholder="Nombre Apellido"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="fg"><label class="fl">Rol</label><select class="fp" id="nuRol" style="width:100%"><option value="votante">Votante</option><option value="evaluado">Evaluado</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div><div class="fg"><label class="fl">Área</label><select class="fp" id="nuArea" style="width:100%"><option value="">—</option></select></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="fg"><label class="fl">Sede</label><select class="fp" id="nuSede" style="width:100%"><option value="">—</option></select></div><div class="fg"><label class="fl">Contraseña</label><input class="login-in" type="password" id="nuPwd" placeholder="Temporal"></div></div>
-      <div class="fg"><label class="fl">Permisos adicionales</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="nu-perm"> Dashboard</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="nu-perm"> Reportes</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="admin" class="nu-perm"> Admin</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="nu-perm"> Usuarios</label></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Rol</label><select class="fp" id="nuRol" style="width:100%"><option value="votante">Votante</option><option value="evaluado">Evaluado</option><option value="evaluador">Evaluador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
+        <div class="fg"><label class="fl">Área</label><select class="fp" id="nuArea" style="width:100%"><option value="">—</option></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Sede</label><select class="fp" id="nuSede" style="width:100%"><option value="">—</option></select></div>
+        <div class="fg"><label class="fl">Contraseña</label><input class="login-in" type="password" id="nuPwd" placeholder="Temporal"></div>
+      </div>
+      <div class="fg"><label class="fl">Permisos adicionales</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="nu-perm"> Dashboard</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="nu-perm"> Reportes</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="nu-perm"> Usuarios</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="elecciones" class="nu-perm"> Elecciones</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="evaluadores" class="nu-perm"> Evaluadores</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="parametros" class="nu-perm"> Configuración</label></div></div>
       <div class="fg"><label class="fl">Foto (URL)</label><input class="login-in" id="nuFoto" placeholder="https://drive.google.com/..."></div>
     </div>
     <div class="mo-ft"><button class="btn-sub" onclick="App.saveNewUser()">Crear Usuario</button></div>
+  </div></div>
+
+  <!-- MODAL: EDITAR USUARIO -->
+  <div class="mo-bg" id="edOv"><div class="mo">
+    <div class="mo-top" style="padding-bottom:0"><div style="flex:1"><div class="mo-nm">Editar Usuario</div><div class="mo-mt" id="edEmail">—</div></div><button class="mo-x" onclick="App.closeEditUser()">✕</button></div>
+    <div class="mo-bd">
+      <div class="fg"><label class="fl">Nombre</label><input class="login-in" id="edNombre"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Rol</label><select class="fp" id="edRol" style="width:100%"><option value="votante">Votante</option><option value="evaluado">Evaluado</option><option value="evaluador">Evaluador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
+        <div class="fg"><label class="fl">Área</label><select class="fp" id="edArea" style="width:100%"><option value="">—</option></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Sede</label><select class="fp" id="edSede" style="width:100%"><option value="">—</option></select></div>
+        <div class="fg"><label class="fl">Activo</label><select class="fp" id="edActivo" style="width:100%"><option value="true">Sí</option><option value="false">No</option></select></div>
+      </div>
+      <div class="fg"><label class="fl">Permisos adicionales</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="ed-perm"> Dashboard</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="ed-perm"> Reportes</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="ed-perm"> Usuarios</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="elecciones" class="ed-perm"> Elecciones</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="evaluadores" class="ed-perm"> Evaluadores</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="parametros" class="ed-perm"> Configuración</label></div></div>
+      <div class="fg"><label class="fl">Foto (URL)</label><input class="login-in" id="edFoto"></div>
+    </div>
+    <div class="mo-ft"><button class="btn-sub" onclick="App.saveEditUser()">Guardar Cambios</button></div>
   </div></div>
 
   <div class="tz" id="toasts"></div>

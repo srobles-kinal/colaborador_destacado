@@ -1,17 +1,13 @@
 /**
- * api.js v6 — HTTP client
+ * api.js v7
  */
-// ══════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbz83jnGf3XdQybe-nPJ1fLf3omMJkDXc8-PFTJWdAO1DmucVwB05fIY1Ey1PUBduA2Pcg/exec';
-// ══════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbxVf3zm4zjnu9hmVVQciGQxzm5y5Ox3gE4lataoBvd9G9C-XrEPu9bOK0iDLFP87kdZaA/exec';
 let _tk=null;
 const api={
   setToken(t){_tk=t},getToken(){return _tk},
   async call(action,data={}){
     const r=await fetch(API_URL,{method:'POST',body:JSON.stringify({action,token:_tk,...data})});
-    const j=await r.json();
-    if(j.status==='error')throw new Error(j.message||'Error');
-    return j;
+    const j=await r.json();if(j.status==='error')throw new Error(j.message||'Error');return j;
   },
   login(u,p){return this.call('login',{usuario:u,password:p})},
   cambiarPassword(n){return this.call('cambiarPassword',{nuevaPassword:n})},
@@ -30,17 +26,15 @@ const api={
   saveParametrosSup(v){return this.call('saveParametrosSupervisores',{valores:v})},
   saveAreas(v){return this.call('saveAreas',{valores:v})},
   saveSedes(v){return this.call('saveSedes',{valores:v})},
-  // Params per area
   async getParametrosArea(){return(await this.call('getParametrosArea')).data},
   saveParametrosArea(area,params){return this.call('saveParametrosArea',{area:area,parametros:params})},
-  // Supervisors
   async getEvaluadoresSup(){return(await this.call('getEvaluadoresSup')).data},
   asignarEvaluadores(supEmail,evaluadores){return this.call('asignarEvaluadores',{supervisorEmail:supEmail,evaluadores:evaluadores})},
   async getColabsByArea(areas){return(await this.call('getColabsByArea',{areas:areas})).data},
-  // Convocatorias
-  async getConvocatorias(){return(await this.call('getConvocatorias')).data},
-  crearConvocatoria(d){return this.call('crearConvocatoria',d)},
-  activarConvocatoria(id){return this.call('activarConvocatoria',{id:id})},
-  cerrarConvocatoria(id){return this.call('cerrarConvocatoria',{id:id})},
+  // Elecciones (was convocatorias)
+  async getElecciones(){return(await this.call('getElecciones')).data},
+  crearEleccion(d){return this.call('crearEleccion',d)},
+  activarEleccion(id){return this.call('activarEleccion',{id:id})},
+  cerrarEleccion(id){return this.call('cerrarEleccion',{id:id})},
 };
 window.api=api;
