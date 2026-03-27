@@ -1,7 +1,7 @@
 /**
  * api.js v7
  */
-const API_URL = 'https://script.google.com/macros/s/AKfycbwnPcKQqmfZA93VDrqacAXnlo8lVHIh8z7MTejoN2Kso_PsnbSA_zpg8GGRGxcDcQy0ZQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzleJ3i5IL6JUA6v9xlPC9JFBRBaBre0tck1ONdoZ_kY1-4NeYVUQOqlfpzr3jccc-pVw/exec';
 let _tk=null;
 const api={
   setToken(t){_tk=t},getToken(){return _tk},
@@ -36,5 +36,15 @@ const api={
   crearEleccion(d){return this.call('crearEleccion',d)},
   activarEleccion(id){return this.call('activarEleccion',{id:id})},
   cerrarEleccion(id){return this.call('cerrarEleccion',{id:id})},
+  // Evaluación Diaria
+  async getCategoriasDiarias(){return(await this.call('getCategoriasDiarias')).data},
+  saveCategoriasDiarias(area,datos){return this.call('saveCategoriasDiarias',{area:area,datos:datos})},
+  async getPreguntasDiarias(area){return(await this.call('getPreguntasDiarias',{area:area})).data},
+  guardarEvalDiaria(d){return this.call('guardarEvalDiaria',d)},
+  async getEvalDiariaHoy(){return(await this.call('getEvalDiariaHoy')).data},
+  async getColabsParaEvalDiaria(){return(await this.call('getColabsParaEvalDiaria')).data},
+  async getPesos(){return(await this.call('getPesos')).data},
+  savePesos(d,e){return this.call('savePesos',{pesoDiaria:d,pesoEleccion:e})},
+  async getDashboardCombinado(){return(await this.call('getDashboardCombinado')).data},
 };
 window.api=api;

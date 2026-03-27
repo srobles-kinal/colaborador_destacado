@@ -60,6 +60,7 @@
       <button class="nb hidden" data-tab="usuarios" id="navUsuarios">👤 Usuarios</button>
       <button class="nb hidden" data-tab="elecciones" id="navElecciones">🗓️ Elecciones</button>
       <button class="nb hidden" data-tab="evaluadores" id="navEvaluadores">👔 Evaluadores</button>
+      <button class="nb hidden" data-tab="evaldia" id="navEvalDia">📋 Eval. Diaria</button>
       <button class="nb hidden" data-tab="config" id="navConfig">⚙️ Configuración</button>
     </div></nav>
 
@@ -85,6 +86,29 @@
       <section id="p-rep" class="pn">
         <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 CSV</button></div></div><div class="tw"><table id="tR"></table></div></div>
       </section>
+
+      <!-- TAB: EVAL DIARIA (supervisores) -->
+      <section id="p-evaldia" class="pn">
+        <div class="wlc" style="background:linear-gradient(135deg,#0c0566,#080340)">
+          <div class="wlc-line"></div>
+          <h2>Evaluación Diaria</h2>
+          <p>Evaluá a los colaboradores de tus áreas asignadas en las categorías configuradas.</p>
+        </div>
+        <div class="sts" id="edSt"></div>
+        <div class="tb">
+          <select class="fp" id="edAreaSel" onchange="App.evalDia.selArea()"><option value="">— Seleccionar área —</option></select>
+        </div>
+        <div id="edColabsCont"><div class="empty"><div class="empty-i">📂</div><div class="empty-t">Seleccioná un área para ver los colaboradores</div></div></div>
+      </section>
+
+      <!-- MODAL: EVAL DIARIA -->
+      <div class="mo-bg" id="edEvalOv"><div class="mo" style="max-width:600px">
+        <div class="mo-top"><button class="mo-x" onclick="App.evalDia.closeModal()">✕</button>
+          <div class="mo-profile"><img class="mo-av" id="edEvalFoto" src="" alt=""><div class="mo-nm" id="edEvalNm">—</div><div class="mo-mt" id="edEvalMt">Evaluación diaria</div></div>
+        </div>
+        <div class="mo-bd" id="edEvalBd" style="max-height:55vh;overflow-y:auto"></div>
+        <div class="mo-ft"><button class="btn-sub" id="edEvalBtn" onclick="App.evalDia.submit()">Guardar Evaluación Diaria</button></div>
+      </div></div>
 
       <!-- TAB: USUARIOS (permiso: usuarios) -->
       <section id="p-usuarios" class="pn">
@@ -115,6 +139,28 @@
       <!-- TAB: CONFIGURACIÓN (permiso: parametros) -->
       <section id="p-config" class="pn">
         <div class="sts" id="cfgSt"></div>
+
+        <!-- Pesos configurables -->
+        <div class="cd" style="margin-bottom:14px">
+          <div class="cd-h"><span class="cd-t">⚖️ Pesos de Evaluación</span></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Configurá qué porcentaje del puntaje final viene de la evaluación diaria del supervisor y qué porcentaje de la elección de compañeros. Deben sumar 100.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:400px">
+            <div class="fg"><label class="fl">Eval. Diaria (%)</label><input class="login-in" type="number" id="pesoDiaria" value="40" min="0" max="100"></div>
+            <div class="fg"><label class="fl">Elección (%)</label><input class="login-in" type="number" id="pesoEleccion" value="60" min="0" max="100"></div>
+          </div>
+          <button class="btn bp" style="margin-top:8px" onclick="App.savePesos()">💾 Guardar pesos</button>
+        </div>
+
+        <!-- Categorías y preguntas diarias -->
+        <div class="cd" style="margin-bottom:14px">
+          <div class="cd-h"><span class="cd-t">📋 Categorías y Preguntas Diarias</span></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Configurá las categorías (ej: 5's, Lineamientos, Generales) y sus preguntas para cada área. Seleccioná un área para editar.</p>
+          <div class="tb" style="margin-bottom:12px">
+            <select class="fp" id="catAreaSel" onchange="App.loadCatArea()"><option value="">— Seleccionar área —</option></select>
+          </div>
+          <div id="catAreaCont"><div class="empty"><div class="empty-t">Seleccioná un área para configurar sus preguntas</div></div></div>
+        </div>
+
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📊 Parámetros por Área</span></div><p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Cada área puede tener sus propios parámetros. Si no, usa los globales.</p><div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Globales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('p')">💾</button></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ps')">💾</button></div>

@@ -18,6 +18,7 @@ document.querySelectorAll('.nb').forEach(b=>{b.addEventListener('click',()=>{
   if(t==='dash')App.loadDash();if(t==='rep')App.loadRep();
   if(t==='usuarios')App.loadUsers();if(t==='elecciones')App.loadElecciones();
   if(t==='evaluadores')App.loadSupEvals();if(t==='config')App.loadConfig();
+  if(t==='evaldia')App.evalDia.load();
 })});
 document.querySelectorAll('.pwd-toggle').forEach(btn=>{btn.addEventListener('click',()=>{const i=btn.previousElementSibling;if(i.type==='password'){i.type='text';btn.textContent='🙈'}else{i.type='password';btn.textContent='👁️'}})});
 document.addEventListener('click',function(e){const btn=e.target.closest('.rb-b');if(!btn)return;e.preventDefault();const p=btn.parentElement.dataset.param;const v=parseInt(btn.dataset.v);if(!p||isNaN(v))return;EV.ratings[p]=v;btn.parentElement.querySelectorAll('.rb-b').forEach(b=>{b.classList.toggle('on',parseInt(b.dataset.v)<=v)})});
@@ -113,6 +114,9 @@ const App={
     toggle('navDash','dashboard');toggle('navRep','reportes');
     toggle('navUsuarios','usuarios');toggle('navElecciones','elecciones');
     toggle('navEvaluadores','evaluadores');toggle('navConfig','parametros');
+    // Eval diaria visible for supervisors and admins
+    const isSupOrAdmin=USER.rol==='supervisor'||USER.rol==='admin';
+    const navED=$('navEvalDia');if(navED)navED.classList.toggle('hidden',!isSupOrAdmin);
 
     const a=DATA.analytics||{},mp=DATA.miPromedio?parseFloat(DATA.miPromedio).toFixed(1):'—';
     $('vSt').innerHTML=
@@ -323,6 +327,11 @@ const App={
       $('cfgSt').innerHTML='<div class="st sb"><div class="st-i">👥</div><div class="st-n">'+(s.totalColaboradores||0)+'</div><div class="st-l">Colaboradores</div></div><div class="st sl"><div class="st-i">📋</div><div class="st-n">'+(s.totalAreas||0)+'</div><div class="st-l">Áreas</div></div>';
       ADM={p:s.parametros||[],ps:s.parametrosSupervisores||[],ar:s.areas||[],se:s.sedes||[]};
       this.adm.renderAll();this.loadParamsArea();
+      // Load pesos
+      this.loadPesos();
+      // Populate category area selector
+      const catSel=$('catAreaSel');
+      if(catSel)catSel.innerHTML='<option value="">— Seleccionar área —</option>'+ADM.ar.map(a=>'<option value="'+esc(a)+'">'+esc(a)+'</option>').join('');
     }catch(e){toast(e.message,'err')}
   },
   async loadParamsArea(){
@@ -347,6 +356,185 @@ const App={
     add(k){ADM[k].push('Nuevo');this.renderAll()},rm(k,i){if(ADM[k].length<=1){toast('Mínimo 1','err');return}ADM[k].splice(i,1);this.renderAll()},
     _v(k){return Array.from(document.querySelectorAll('.ai-'+k)).map(e=>e.value.trim()).filter(Boolean)},
     async save(k){const map={p:'saveParametros',ps:'saveParametrosSup',ar:'saveAreas',se:'saveSedes'};try{await api[map[k]](this._v(k));ADM[k]=this._v(k);toast('Guardado','ok')}catch(e){toast(e.message,'err')}}
+  },
+
+  // ══════════════════════════════════════
+  // PESOS CONFIGURABLES
+  // ══════════════════════════════════════
+  async loadPesos(){
+    try{const p=await api.getPesos();$('pesoDiaria').value=p.pesoDiaria||40;$('pesoEleccion').value=p.pesoEleccion||60}catch(e){}
+  },
+  async savePesos(){
+    const d=parseInt($('pesoDiaria').value)||0,e=parseInt($('pesoEleccion').value)||0;
+    if(d+e!==100){toast('Los pesos deben sumar 100','err');return}
+    try{const r=await api.savePesos(d,e);if(r.success)toast('Pesos guardados','ok');else toast(r.message,'err')}catch(e){toast(e.message,'err')}
+  },
+
+  // ══════════════════════════════════════
+  // CATEGORÍAS DIARIAS CONFIG (admin)
+  // ══════════════════════════════════════
+  _catData:{},
+  async loadCatArea(){
+    const area=$('catAreaSel').value;
+    const ct=$('catAreaCont');
+    if(!area){ct.innerHTML='<div class="empty"><div class="empty-t">Seleccioná un área</div></div>';return}
+    try{
+      const data=await api.getCategoriasDiarias();
+      this._catData=data;
+      const porArea=data.porArea||{};
+      const areaCats=porArea[area]||{};
+      const defaultCats=data.categorias||["5's","Lineamientos","Generales"];
+      // Show all categories with their questions for this area
+      const catsToShow=Object.keys(areaCats).length>0?Object.keys(areaCats):defaultCats;
+      ct.innerHTML=catsToShow.map(cat=>{
+        const pregs=areaCats[cat]||[];
+        return '<div style="margin-bottom:14px;padding:12px;border:1px solid var(--s2);border-radius:10px;background:var(--s0)">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:.85rem">'+esc(cat)+'</strong><span style="font-size:.68rem;color:var(--s4)">'+pregs.length+' preguntas</span></div>'
+          +'<div id="cat-q-'+cat.replace(/\s|'/g,'_')+'">'
+          +pregs.map(p=>'<div class="adm-it"><input class="adm-in cq-in" data-cat="'+esc(cat)+'" data-area="'+esc(area)+'" value="'+esc(p)+'"><button class="bd-sm" onclick="this.parentElement.remove()">🗑</button></div>').join('')
+          +'</div>'
+          +'<div style="display:flex;gap:6px;margin-top:6px"><button class="btn ba" style="font-size:.7rem;padding:4px 10px" onclick="App.addCatQ(\''+esc(cat)+'\')">+ Pregunta</button></div>'
+          +'</div>';
+      }).join('')
+      +'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn ba" onclick="App.addCatNew()">+ Nueva categoría</button>'
+      +'<button class="btn bp" onclick="App.saveCatArea()">💾 Guardar todo</button>'
+      +'</div>';
+    }catch(e){ct.innerHTML='<div class="empty">'+e.message+'</div>'}
+  },
+  addCatQ(cat){
+    const ct=$('cat-q-'+cat.replace(/\s|'/g,'_'));if(!ct)return;
+    const area=$('catAreaSel').value;
+    const d=document.createElement('div');d.className='adm-it';
+    d.innerHTML='<input class="adm-in cq-in" data-cat="'+esc(cat)+'" data-area="'+esc(area)+'" value="Nueva pregunta"><button class="bd-sm" onclick="this.parentElement.remove()">🗑</button>';
+    ct.appendChild(d);
+  },
+  addCatNew(){
+    const cat=prompt('Nombre de la nueva categoría:');if(!cat)return;
+    const area=$('catAreaSel').value;
+    const ct=$('catAreaCont');
+    const div=document.createElement('div');
+    div.style='margin-bottom:14px;padding:12px;border:1px solid var(--s2);border-radius:10px;background:var(--s0)';
+    div.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:.85rem">'+esc(cat)+'</strong></div>'
+      +'<div id="cat-q-'+cat.replace(/\s|'/g,'_')+'"><div class="adm-it"><input class="adm-in cq-in" data-cat="'+esc(cat)+'" data-area="'+esc(area)+'" value="Primera pregunta"><button class="bd-sm" onclick="this.parentElement.remove()">🗑</button></div></div>'
+      +'<div style="display:flex;gap:6px;margin-top:6px"><button class="btn ba" style="font-size:.7rem;padding:4px 10px" onclick="App.addCatQ(\''+esc(cat)+'\')">+ Pregunta</button></div>';
+    // Insert before the buttons div
+    const btnsDiv=ct.querySelector('div:last-child');
+    ct.insertBefore(div,btnsDiv);
+  },
+  async saveCatArea(){
+    const area=$('catAreaSel').value;if(!area){toast('Seleccioná un área','err');return}
+    const inputs=document.querySelectorAll('.cq-in');
+    const datos=[];
+    inputs.forEach(inp=>{
+      const cat=inp.dataset.cat,preg=inp.value.trim();
+      if(cat&&preg)datos.push({categoria:cat,area:area,pregunta:preg});
+    });
+    if(!datos.length){toast('Agregá al menos una pregunta','err');return}
+    try{const r=await api.saveCategoriasDiarias(area,datos);if(r.success)toast('Categorías guardadas para '+area,'ok');else toast(r.message,'err')}catch(e){toast(e.message,'err')}
+  },
+
+  // ══════════════════════════════════════
+  // EVALUACIÓN DIARIA (supervisor)
+  // ══════════════════════════════════════
+  evalDia:{
+    _colabs:{},_currentColab:null,_ratings:{},
+
+    async load(){
+      try{
+        const grouped=await api.getColabsParaEvalDiaria();
+        const hoy=await api.getEvalDiariaHoy();
+        this._colabs=grouped;
+        this._hoyData=hoy;
+        // Populate area selector
+        const sel=$('edAreaSel');
+        const areas=Object.keys(grouped).sort();
+        sel.innerHTML='<option value="">— Seleccionar área —</option>'+areas.map(a=>'<option value="'+esc(a)+'">'+esc(a)+'</option>').join('');
+        // Stats
+        let total=0,evHoy=0;
+        areas.forEach(a=>{grouped[a].forEach(c=>{total++;if(hoy.evaluados&&hoy.evaluados[c.email])evHoy++})});
+        $('edSt').innerHTML='<div class="st sb"><div class="st-i">📋</div><div class="st-n">'+hoy.fecha+'</div><div class="st-l">Hoy</div></div>'
+          +'<div class="st sg"><div class="st-i">✅</div><div class="st-n">'+evHoy+'/'+total+'</div><div class="st-l">Evaluados hoy</div></div>'
+          +'<div class="st sl"><div class="st-i">📂</div><div class="st-n">'+areas.length+'</div><div class="st-l">Áreas asignadas</div></div>';
+        $('edColabsCont').innerHTML='<div class="empty"><div class="empty-i">📂</div><div class="empty-t">Seleccioná un área</div></div>';
+      }catch(e){toast(e.message,'err')}
+    },
+
+    selArea(){
+      const area=$('edAreaSel').value;
+      const ct=$('edColabsCont');
+      if(!area){ct.innerHTML='<div class="empty"><div class="empty-i">📂</div><div class="empty-t">Seleccioná un área</div></div>';return}
+      const colabs=this._colabs[area]||[];
+      if(!colabs.length){ct.innerHTML='<div class="empty"><div class="empty-t">No hay colaboradores en esta área</div></div>';return}
+      const hoy=this._hoyData?.evaluados||{};
+      ct.innerHTML='<div class="cg">'+colabs.map(c=>{
+        const done=hoy[c.email];
+        const avgHoy=done?done.reduce((s,x)=>s+x.nota,0)/done.length:0;
+        return '<div class="cc '+(done?'':'')+'"><img class="av" src="'+(c.fotoUrl||fb(c.nombre))+'" onerror="this.src=\''+fb(c.nombre)+'\'">'
+          +'<div class="ci"><div class="cn">'+esc(c.nombre)+'</div><div class="cm">'+esc(c.sede||'')+'</div>'
+          +(done?'<div style="font-size:.72rem;color:var(--g6);font-weight:600">✓ Evaluado hoy ('+avgHoy.toFixed(1)+')</div>':'')
+          +'<button class="btn-ev" onclick="App.evalDia.openModal(\''+esc(c.email)+'\',\''+esc(area)+'\')">'+(done?'Re-evaluar':'Evaluar')+'</button>'
+          +'</div></div>';
+      }).join('')+'</div>';
+    },
+
+    async openModal(email,area){
+      const colabs=this._colabs[area]||[];
+      const c=colabs.find(x=>x.email===email);
+      if(!c)return;
+      this._currentColab=c;this._ratings={};
+      $('edEvalNm').textContent=c.nombre;
+      $('edEvalMt').textContent=area+' · Evaluación diaria';
+      $('edEvalFoto').src=c.fotoUrl||fb(c.nombre);$('edEvalFoto').onerror=function(){this.src=fb(c.nombre)};
+      // Get questions for this area
+      try{
+        const pregs=await api.getPreguntasDiarias(area);
+        const cats=Object.keys(pregs);
+        if(!cats.length){toast('No hay preguntas configuradas para '+area+'. Configuralas en Configuración.','err');return}
+        $('edEvalBd').innerHTML=cats.map(cat=>{
+          const qs=pregs[cat]||[];
+          return '<div style="margin-bottom:16px"><div style="font-weight:700;font-size:.88rem;color:var(--b8);margin-bottom:10px;padding:6px 12px;background:var(--b0);border-radius:8px;border-left:3px solid var(--b8)">'+esc(cat)+'</div>'
+            +qs.map(q=>{
+              const key=cat+'|||'+q;
+              return '<div class="rb"><div class="rl">'+esc(q)+'</div><div class="rr" data-dparam="'+esc(key)+'">'
+                +[1,2,3,4,5,6,7,8,9,10].map(n=>'<button type="button" class="rb-b" data-v="'+n+'" onclick="App.evalDia.rate(this,\''+esc(key)+'\','+n+')">'+n+'</button>').join('')
+                +'</div></div>';
+            }).join('')+'</div>';
+        }).join('');
+        $('edEvalOv').classList.add('open');
+      }catch(e){toast(e.message,'err')}
+    },
+
+    rate(btn,key,val){
+      this._ratings[key]=val;
+      btn.parentElement.querySelectorAll('.rb-b').forEach(b=>{b.classList.toggle('on',parseInt(b.dataset.v)<=val)});
+    },
+
+    closeModal(){$('edEvalOv').classList.remove('open')},
+
+    async submit(){
+      const keys=Object.keys(this._ratings);
+      if(!keys.length){toast('Calificá al menos una pregunta','err');return}
+      // Check all questions are answered
+      const allBtns=$('edEvalBd').querySelectorAll('.rr[data-dparam]');
+      const missing=[];
+      allBtns.forEach(rr=>{
+        const k=rr.dataset.dparam;
+        if(!this._ratings[k])missing.push(k.split('|||')[1]);
+      });
+      if(missing.length>0){toast('Faltan '+missing.length+' preguntas por calificar','err');return}
+      const calificaciones=keys.map(k=>{
+        const parts=k.split('|||');
+        return{categoria:parts[0],pregunta:parts[1],nota:this._ratings[k]};
+      });
+      const btn=$('edEvalBtn');btn.disabled=true;btn.textContent='Guardando...';
+      try{
+        const r=await api.guardarEvalDiaria({colaboradorEmail:this._currentColab.email,calificaciones:calificaciones});
+        if(r.success){toast('Evaluación diaria guardada','ok');this.closeModal();this.load()}
+        else toast(r.message,'err');
+      }catch(e){toast(e.message,'err')}
+      btn.disabled=false;btn.textContent='Guardar Evaluación Diaria';
+    }
   },
 };
 function stars_(p){if(!p)return'☆☆☆☆☆';const v=parseFloat(p)/2;let s='';for(let i=1;i<=5;i++)s+=i<=Math.round(v)?'★':'☆';return'<span style="color:#f59e0b;letter-spacing:2px">'+s+'</span>'}
