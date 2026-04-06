@@ -11,6 +11,19 @@ function fb(n){return"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function stars_(p){if(!p)return'☆☆☆☆☆';const v=parseFloat(p)/2;let s='';for(let i=1;i<=5;i++)s+=i<=Math.round(v)?'★':'☆';return'<span style="color:#f59e0b;letter-spacing:2px">'+s+'</span>'}
 
+// ── Device detection ──
+const Device={
+  isMobile:()=>window.innerWidth<=768,
+  isTouch:()=>'ontouchstart' in window||navigator.maxTouchPoints>0,
+  isSmall:()=>window.innerWidth<=480,
+  type:()=>Device.isSmall()?'phone':Device.isMobile()?'tablet':'desktop'
+};
+window.Device=Device;
+
+// ── Loading overlay ──
+function showLoading(){const el=$('loadingOv');if(el)el.classList.add('show')}
+function hideLoading(){const el=$('loadingOv');if(el)el.classList.remove('show')}
+
 // ── Session persistence ──
 const INACTIVITY_MS=30*60*1000;
 let _inactivityTimer=null;
@@ -66,7 +79,7 @@ const App={
     btn.disabled=false;btn.textContent='Guardar Contraseña';
   },
   async logout(){try{await api.logout()}catch(e){}api.setToken(null);USER=null;DATA=null;clearSession();if(_inactivityTimer)clearTimeout(_inactivityTimer);$('appShell').classList.remove('show');$('loginScreen').style.display='flex';$('loginPass').value='';$('loginErr').textContent=''},
-  async start(){$('loginScreen').style.display='none';$('appShell').classList.add('show');resetInactivity();try{DATA=await api.getAllData();this.render();toast('Datos cargados','ok')}catch(e){if(e.message.indexOf('Sesión')>=0){clearSession();this.logout();return}toast(e.message,'err')}},
+  async start(){$('loginScreen').style.display='none';$('appShell').classList.add('show');resetInactivity();showLoading();try{DATA=await api.getAllData();this.render();toast('Datos cargados','ok')}catch(e){if(e.message.indexOf('Sesión')>=0){clearSession();this.logout();return}toast(e.message,'err')}finally{hideLoading()}},
 
   render(){
     if(!DATA)return;

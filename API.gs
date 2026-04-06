@@ -1,8 +1,8 @@
 /**
  * API v6 — Sistema de Evaluación
- * New: Convocatorias (monthly events), ParametrosArea, supervisor evaluator picker
+ * New: Elecciones (monthly events), ParametrosArea, supervisor evaluator picker
  * Sheets: Usuarios, Votos, Parametros, ParametrosArea, Areas, Sedes,
- *         Convocatorias, Sesiones, Auditoria
+ *         Elecciones, Sesiones, Auditoria
  */
 var CFG={VERSION:'6.0',SESSION_H:8};
 
@@ -44,13 +44,23 @@ function doPost(e){
       case 'getEvaluadoresSup':return wA_(b,getEvalSup_);
       case 'asignarEvaluadores':return jr_(asignarEval_(b));
       case 'getColabsByArea':return wA_(b,getColabsByArea_);
-      // Convocatorias
-      case 'getConvocatorias':return wA_(b,getConvocatorias_);
-      case 'crearConvocatoria':return jr_(crearConvocatoria_(b));
-      case 'activarConvocatoria':return jr_(activarConvocatoria_(b));
-      case 'cerrarConvocatoria':return jr_(cerrarConvocatoria_(b));
+      // Elecciones
+      case 'getElecciones':return wA_(b,getElecciones_);
+      case 'crearEleccion':return jr_(crearEleccion_(b));
+      case 'activarEleccion':return jr_(activarEleccion_(b));
+      case 'cerrarEleccion':return jr_(cerrarEleccion_(b));
       // Export
       case 'exportReport':return wA_(b,exportReport_);
+      // Evaluación Diaria
+      case 'getCategoriasDiarias':return wA_(b,getCatDiarias_);
+      case 'saveCategoriasDiarias':return jr_(saveCatDiarias_(b));
+      case 'getPreguntasDiarias':return wA_(b,getPregDiarias_);
+      case 'guardarEvalDiaria':return jr_(guardarEvalDiaria_(b));
+      case 'getEvalDiariaHoy':return wA_(b,getEvalDiariaHoy_);
+      case 'getColabsParaEvalDiaria':return wA_(b,getColabsEvalDiaria_);
+      case 'getPesos':return wA_(b,getPesos_);
+      case 'savePesos':return jr_(savePesos_(b));
+      case 'getDashboardCombinado':return wA_(b,getDashCombinado_);
       default:return err_('Acción: '+a);
     }
   }catch(x){return err_(x.toString())}
@@ -88,14 +98,46 @@ function hm_(sh){
   return m;
 }
 
-function cv_(r,m,k,d){return m[k]!==undefined?r[m[k]]:d}
+function cv_(r,m,k,d){if(m[k]===undefined)return d;var v=r[m[k]];return(v===undefined||v===null||v==='')?d:v}
 function isT_(v){return v===true||String(v).toUpperCase()==='TRUE'}
 function dUrl_(u){if(!u)return'';var x=String(u).match(/\/d\/([a-zA-Z0-9-_]+)/);return x?'https://lh3.googleusercontent.com/d/'+x[1]:String(u)}
 
 // ═══════════════════════════════════════
-// USER LOOKUP
+// USER LOOKUP + PERMISSION CHECK
 // ═══════════════════════════════════════
+var _basePerms={
+  admin:['votar','dashboard','reportes','usuarios','elecciones','evaluadores','parametros'],
+  supervisor:['votar','dashboard','reportes'],
+  evaluador:['votar'],
+  votante:['votar'],
+  evaluado:['votar']
+};
+
+function hasPerm_(email,perm){
+  var u=findU_(email);if(!u)return false;
+  // Admin always has all permissions
+  if(u.rol==='admin')return true;
+  // Check base role perms
+  var rp=_basePerms[u.rol]||['votar'];
+  if(rp.indexOf(perm)>=0)return true;
+  // Check custom perms from sheet
+  if(u.permisos.indexOf(perm)>=0)return true;
+  return false;
+}
+
+function assertPerm_(token,perm){
+  var s=sesOk_(token);
+  if(!s)throw new Error('Sesión inválida');
+  if(!hasPerm_(s.usuario,perm))throw new Error('No autorizado');
+  return s;
+}
+
 function findU_(email){
+  var e=String(email).trim().toLowerCase();
+  // In-request cache
+  if(!findU_._cache)findU_._cache={};
+  if(findU_._cache[e]!==undefined)return findU_._cache[e];
+  
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var sh=ss.getSheetByName('Usuarios');
   if(!sh)return null;
@@ -106,7 +148,7 @@ function findU_(email){
   for(var i=1;i<d.length;i++){
     if(String(d[i][m.email]).trim().toLowerCase()===e){
       var permisos=m.permisos!==undefined?String(d[i][m.permisos]):'';
-      return{
+      var result={
         ri:i,sh:sh,m:m,
         email:String(d[i][m.email]).trim(),
         nombre:cv_(d[i],m,'nombre',''),
@@ -120,8 +162,11 @@ function findU_(email){
         permisos:permisos?permisos.split(',').map(function(p){return p.trim()}):[],
         evaluadores:m.evaluadores!==undefined?String(d[i][m.evaluadores]):''
       };
+      findU_._cache[e]=result;
+      return result;
     }
   }
+  findU_._cache[e]=null;
   return null;
 }
 
@@ -180,7 +225,7 @@ function login_(b){
   mkSes_(u.email,tk);
   if(u.m.acceso!==undefined)u.sh.getRange(u.ri+1,u.m.acceso+1).setValue(new Date());
   log_('LOGIN',u.email,{});
-  var baseP={admin:['votar','dashboard','reportes','admin','usuarios'],supervisor:['votar','dashboard','reportes'],votante:['votar'],evaluado:['votar']};
+  var baseP=_basePerms;
   var perms=(baseP[u.rol]||['votar']).slice();
   u.permisos.forEach(function(p){if(p&&perms.indexOf(p)===-1)perms.push(p)});
   return{status:'ok',success:true,token:tk,usuario:{
@@ -199,27 +244,30 @@ function cambiarPwd_(b){
 }
 
 // ═══════════════════════════════════════
-// CONVOCATORIAS (Monthly Events)
+// eleccionS (Monthly Events)
 // ═══════════════════════════════════════
-// Sheet: Convocatorias [Id, Nombre, FechaInicio, FechaFin, Estado, CreadoPor, FechaCreacion]
+// Sheet: Elecciones [Id, Nombre, FechaInicio, FechaFin, Estado, CreadoPor, FechaCreacion]
 // Estado: activa | cerrada | borrador
 
-function getConvocatoriaActiva_(){
+var _eleccionCache=null;
+function getEleccionActiva_(){
+  if(_eleccionCache!==null)return _eleccionCache===false?null:_eleccionCache;
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var sh=ss.getSheetByName('Convocatorias');
-  if(!sh||sh.getLastRow()<=1)return null;
+  var sh=ss.getSheetByName('Elecciones');
+  if(!sh||sh.getLastRow()<=1){_eleccionCache=false;return null}
   var d=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
   for(var i=0;i<d.length;i++){
     if(String(d[i][4]).toLowerCase()==='activa'){
-      return{id:String(d[i][0]),nombre:String(d[i][1]),inicio:d[i][2],fin:d[i][3],estado:'activa',row:i+2};
+      var r={id:String(d[i][0]),nombre:String(d[i][1]),inicio:d[i][2],fin:d[i][3],estado:'activa',row:i+2};
+      _eleccionCache=r;return r;
     }
   }
-  return null;
+  _eleccionCache=false;return null;
 }
 
-function getConvocatorias_(ses){
+function getElecciones_(ses){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var sh=ss.getSheetByName('Convocatorias');
+  var sh=ss.getSheetByName('Elecciones');
   if(!sh||sh.getLastRow()<=1)return[];
   var d=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
   var out=[];
@@ -236,28 +284,26 @@ function getConvocatorias_(ses){
   return out;
 }
 
-function crearConvocatoria_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+function crearEleccion_(b){
+  var s=assertPerm_(b.token,'elecciones');
   if(!b.nombre)return{status:'error',message:'Nombre requerido'};
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var sh=ss.getSheetByName('Convocatorias');
+  var sh=ss.getSheetByName('Elecciones');
   if(!sh){
-    sh=ss.insertSheet('Convocatorias');
+    sh=ss.insertSheet('Elecciones');
     sh.appendRow(['Id','Nombre','FechaInicio','FechaFin','Estado','CreadoPor','FechaCreacion']);
   }
   var id=uuid_().substring(0,8);
   sh.appendRow([id,b.nombre,b.fechaInicio||new Date(),b.fechaFin||'','borrador',s.usuario,new Date()]);
-  log_('CONV_CREATE',s.usuario,{id:id,nombre:b.nombre});
+  log_('ELEC_CREATE',s.usuario,{id:id,nombre:b.nombre});
   return{status:'ok',success:true,id:id};
 }
 
-function activarConvocatoria_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+function activarEleccion_(b){
+  var s=assertPerm_(b.token,'elecciones');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var sh=ss.getSheetByName('Convocatorias');
-  if(!sh)return{status:'error',message:'No hay convocatorias'};
+  var sh=ss.getSheetByName('Elecciones');
+  if(!sh)return{status:'error',message:'No hay Elecciones'};
   var d=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
   // First close any active
   for(var i=0;i<d.length;i++){
@@ -269,24 +315,23 @@ function activarConvocatoria_(b){
   for(var i=0;i<d.length;i++){
     if(String(d[i][0])===b.id){
       sh.getRange(i+2,5).setValue('activa');
-      log_('CONV_ACTIVATE',s.usuario,{id:b.id});
+      log_('ELEC_ACTIVATE',s.usuario,{id:b.id});
       return{status:'ok',success:true};
     }
   }
-  return{status:'error',message:'Convocatoria no encontrada'};
+  return{status:'error',message:'eleccion no encontrada'};
 }
 
-function cerrarConvocatoria_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+function cerrarEleccion_(b){
+  var s=assertPerm_(b.token,'elecciones');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var sh=ss.getSheetByName('Convocatorias');
-  if(!sh)return{status:'error',message:'No hay convocatorias'};
+  var sh=ss.getSheetByName('Elecciones');
+  if(!sh)return{status:'error',message:'No hay Elecciones'};
   var d=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
   for(var i=0;i<d.length;i++){
     if(String(d[i][0])===b.id){
       sh.getRange(i+2,5).setValue('cerrada');
-      log_('CONV_CLOSE',s.usuario,{id:b.id});
+      log_('ELEC_CLOSE',s.usuario,{id:b.id});
       return{status:'ok',success:true};
     }
   }
@@ -315,8 +360,7 @@ function getParamsArea_(ses){
 }
 
 function saveParamsArea_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var s=assertPerm_(b.token,'parametros');
   // b.area, b.parametros = array of strings
   if(!b.area)return{status:'error',message:'Área requerida'};
   var ss=SpreadsheetApp.getActiveSpreadsheet();
@@ -342,41 +386,73 @@ function saveParamsArea_(b){
 }
 
 // ═══════════════════════════════════════
-// GET ALL DATA
+// GET ALL DATA (OPTIMIZED - single sheet read)
 // ═══════════════════════════════════════
 function getAllData_(ses){
   var usr=findU_(ses.usuario);
   if(!usr)throw new Error('User not found');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var allCols=readColaboradores_(ss);
-
-  // Active convocatoria
-  var conv=getConvocatoriaActiva_();
-
-  // Supervisors with evaluator config
-  var supervisores=[];
-  allCols.forEach(function(c){
-    var u=findU_(c.email);
-    if(u&&u.rol==='supervisor'){
-      var evList=u.evaluadores?u.evaluadores.split(',').map(function(x){return x.trim().toLowerCase()}).filter(Boolean):[];
-      supervisores.push({colab:c,evaluadoresList:evList});
+  
+  // Read Usuarios sheet ONCE — build both collaborators list AND role map
+  var uSh=ss.getSheetByName('Usuarios');
+  var allCols=[],uMap={},supervisores=[];
+  if(uSh&&uSh.getLastRow()>1){
+    var um=hm_(uSh),ud=uSh.getDataRange().getValues();
+    for(var i=1;i<ud.length;i++){
+      var r=ud[i];
+      var activo=um.activo!==undefined?isT_(r[um.activo]):true;
+      if(!activo)continue;
+      var em=um.email!==undefined?String(r[um.email]).trim():'';
+      if(!em)continue;
+      var emL=em.toLowerCase();
+      var rol=String(cv_(r,um,'rol','votante')).toLowerCase().trim();
+      var evaluadores=um.evaluadores!==undefined?String(r[um.evaluadores]):'';
+      var colab={id:em,nombre:String(cv_(r,um,'nombre','')),area:String(cv_(r,um,'area','')),fotoUrl:dUrl_(cv_(r,um,'foto','')),email:em,sede:String(cv_(r,um,'sede',''))};
+      allCols.push(colab);
+      uMap[emL]={rol:rol,evaluadores:evaluadores};
+      if(rol==='supervisor'||rol==='evaluador'){
+        var evList=evaluadores?evaluadores.split(',').map(function(x){return x.trim().toLowerCase()}).filter(Boolean):[];
+        supervisores.push({colab:colab,evaluadoresList:evList});
+      }
     }
-  });
+  }
+  
+  var conv=getEleccionActiva_();
 
   // Filtering
   var isAdm=usr.rol==='admin'||usr.rol==='supervisor';
+  var isEvaluador=usr.rol==='evaluador';
   var cols;
   if(isAdm){
     cols=allCols;
-  }else{
-    var isMini=usr.sede&&usr.sede.toLowerCase().indexOf('mini')>=0;
-    if(isMini){
-      cols=allCols.filter(function(c){return c.sede.toLowerCase().trim()===usr.sede.toLowerCase().trim()});
-    }else if(usr.area){
+  }else if(isEvaluador){
+    // Evaluador sees people from assigned areas + specific emails
+    var evList=usr.evaluadores?usr.evaluadores.split(',').map(function(x){return x.trim().toLowerCase()}).filter(Boolean):[];
+    if(evList.length===0){
+      // No assignments = see own area only
       cols=allCols.filter(function(c){return c.area.toLowerCase().trim()===usr.area.toLowerCase().trim()});
     }else{
-      cols=allCols;
+      cols=allCols.filter(function(c){
+        var cEmail=c.email.toLowerCase().trim();
+        var cArea=c.area.toLowerCase().trim();
+        return evList.indexOf(cEmail)>=0||evList.indexOf(cArea)>=0;
+      });
     }
+  }else{
+    var usrArea=(usr.area||'').trim();
+    var usrSede=(usr.sede||'').trim();
+    var isMini=usrSede.toLowerCase().indexOf('mini')>=0;
+    if(isMini&&usrSede){
+      cols=allCols.filter(function(c){return c.sede.toLowerCase().trim()===usrSede.toLowerCase()});
+    }else if(usrArea&&usrArea!=='undefined'){
+      cols=allCols.filter(function(c){return c.area.toLowerCase().trim()===usrArea.toLowerCase()});
+    }else{
+      // No area assigned — only see self (will be excluded later), effectively empty
+      cols=[];
+    }
+  }
+  // Add supervisors for non-admin/non-supervisor users
+  if(!isAdm){
     var colEmails={};
     cols.forEach(function(c){colEmails[c.email.toLowerCase()]=true});
     var usrEmail=usr.email.toLowerCase();
@@ -405,7 +481,7 @@ function getAllData_(ses){
   var areas=lst_(ss,'Areas');
   var sedes=lst_(ss,'Sedes');
 
-  // Votes - filter by active convocatoria if exists
+  // Votes - filter by active eleccion if exists
   var votos=readVotos_(ss,conv?conv.id:null);
   var evU={},proms={};
   for(var i=0;i<votos.length;i++){
@@ -437,7 +513,7 @@ function getAllData_(ses){
   }
 
   var miProm=pf[usr.email]||0;
-  var baseP={admin:['votar','dashboard','reportes','admin','usuarios'],supervisor:['votar','dashboard','reportes'],votante:['votar'],evaluado:['votar']};
+  var baseP=_basePerms;
   var perms=(baseP[usr.rol]||['votar']).slice();
   usr.permisos.forEach(function(p){if(p&&perms.indexOf(p)===-1)perms.push(p)});
 
@@ -449,31 +525,31 @@ function getAllData_(ses){
     parametrosSupervisores:pSup.length?pSup:['Liderazgo'],
     areas:areas,sedes:sedes,evaluacionesUnicas:evU,promedios:pf,
     topPorArea:topArea,topPorSede:topSede,
-    convocatoriaActiva:conv?{id:conv.id,nombre:conv.nombre}:null,
+    eleccionActiva:conv?{id:conv.id,nombre:conv.nombre}:null,
     analytics:{totalColaboradores:cols.length,votantesUnicos:nv,evaluadosUnicos:Object.keys(es).length,
       tasaParticipacion:cols.length>0?((nv/cols.length)*100).toFixed(1):'0'}
   };
 }
 
 // ═══════════════════════════════════════
-// VOTES (tied to convocatoria)
+// VOTES (tied to eleccion)
 // ═══════════════════════════════════════
 function guardarVotos_(b){
   var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var conv=getConvocatoriaActiva_();
-  if(!conv)return{status:'error',message:'No hay convocatoria activa. Contacta al administrador.'};
+  var conv=getEleccionActiva_();
+  if(!conv)return{status:'error',message:'No hay eleccion activa. Contacta al administrador.'};
   var convId=conv.id;
   var vSh=ss.getSheetByName('Votos');
   if(!vSh){
     vSh=ss.insertSheet('Votos');
-    vSh.appendRow(['Timestamp','EmailVotante','NombreVotante','ConvocatoriaId','IdEvaluado','NombreEvaluado','Parametro','Puntuacion','Sede','Comentario']);
+    vSh.appendRow(['Timestamp','EmailVotante','NombreVotante','eleccionId','IdEvaluado','NombreEvaluado','Parametro','Puntuacion','Sede','Comentario']);
   }
-  // Check duplicate within this convocatoria
+  // Check duplicate within this eleccion
   var vD=vSh.getLastRow()>1?vSh.getRange(2,1,vSh.getLastRow()-1,10).getValues():[];
   for(var i=0;i<vD.length;i++){
     if(String(vD[i][1])===s.usuario&&String(vD[i][3])===convId&&String(vD[i][4])===String(b.evaluadoId)){
-      return{status:'ok',success:false,message:'Ya evaluaste a este colaborador en esta convocatoria'};
+      return{status:'ok',success:false,message:'Ya evaluaste a este colaborador en esta eleccion'};
     }
   }
   var usr=findU_(s.usuario);
@@ -484,7 +560,7 @@ function guardarVotos_(b){
   }
   vSh.getRange(vSh.getLastRow()+1,1,rows.length,10).setValues(rows);
   log_('EVAL',s.usuario,{ei:b.evaluadoId,conv:convId});
-  // Calc new avg for this convocatoria
+  // Calc new avg for this eleccion
   var all=vSh.getRange(2,1,vSh.getLastRow()-1,10).getValues();
   var sum=0,cnt=0;
   for(var i=0;i<all.length;i++){
@@ -502,7 +578,7 @@ function guardarVotos_(b){
 function getDash_(ses){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var allCols=readColaboradores_(ss);
-  var conv=getConvocatoriaActiva_();
+  var conv=getEleccionActiva_();
   var votos=readVotos_(ss,conv?conv.id:null);
   var proms={};
   for(var i=0;i<votos.length;i++){
@@ -528,7 +604,7 @@ function getDash_(ses){
     analytics:{totalColaboradores:allCols.length,votantesUnicos:Object.keys(vs).length,evaluadosUnicos:Object.keys(es).length,promedios:pf,
       tasaParticipacion:allCols.length>0?((Object.keys(vs).length/allCols.length)*100).toFixed(1):'0'},
     topPorArea:topA,topPorSede:topS,tendencias:tend_(ss,conv?conv.id:null),
-    convocatoria:conv?{id:conv.id,nombre:conv.nombre}:null
+    eleccion:conv?{id:conv.id,nombre:conv.nombre}:null
   };
 }
 
@@ -546,7 +622,7 @@ function getAdminStats_(ses){
 // USERS CRUD
 // ═══════════════════════════════════════
 function getUsuarios_(ses){
-  var u=findU_(ses.usuario);if(!u||u.rol!=='admin')throw new Error('No autorizado');
+  if(!hasPerm_(ses.usuario,'usuarios'))throw new Error('No autorizado');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var sh=ss.getSheetByName('Usuarios');if(!sh)return[];
   var m=hm_(sh),d=sh.getDataRange().getValues(),out=[];
@@ -563,8 +639,7 @@ function getUsuarios_(ses){
 }
 
 function crearUsuario_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var s=assertPerm_(b.token,'usuarios');
   if(!b.email||!b.nombre)return{status:'error',message:'Email y nombre requeridos'};
   if(findU_(b.email))return{status:'error',message:'Ya existe'};
   var ss=SpreadsheetApp.getActiveSpreadsheet();
@@ -590,8 +665,7 @@ function crearUsuario_(b){
 }
 
 function editarUsuario_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var s=assertPerm_(b.token,'usuarios');
   var u=findU_(b.email);if(!u)return{status:'error',message:'No encontrado'};
   if(b.nombre!==undefined&&u.m.nombre!==undefined)u.sh.getRange(u.ri+1,u.m.nombre+1).setValue(b.nombre);
   if(b.rol!==undefined&&u.m.rol!==undefined)u.sh.getRange(u.ri+1,u.m.rol+1).setValue(b.rol);
@@ -605,8 +679,7 @@ function editarUsuario_(b){
 }
 
 function eliminarUsuario_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var s=assertPerm_(b.token,'usuarios');
   var u=findU_(b.email);if(!u)return{status:'error',message:'No encontrado'};
   u.sh.deleteRow(u.ri+1);
   log_('USER_DEL',s.usuario,{t:b.email});
@@ -614,8 +687,7 @@ function eliminarUsuario_(b){
 }
 
 function resetPwd_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var s=assertPerm_(b.token,'usuarios');
   var u=findU_(b.email);if(!u)return{status:'error',message:'No encontrado'};
   var defaultPwd='Muni2025';
   if(u.m.pwd!==undefined)u.sh.getRange(u.ri+1,u.m.pwd+1).setValue(sha256_(defaultPwd));
@@ -640,13 +712,13 @@ function getColabsByArea_(ses,b){
 }
 
 function getEvalSup_(ses){
-  var usr=findU_(ses.usuario);if(!usr||usr.rol!=='admin')throw new Error('No autorizado');
+  if(!hasPerm_(ses.usuario,'evaluadores'))throw new Error('No autorizado');
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var sh=ss.getSheetByName('Usuarios');if(!sh)return[];
   var m=hm_(sh),d=sh.getDataRange().getValues(),out=[];
   for(var i=1;i<d.length;i++){
     var rol=String(cv_(d[i],m,'rol','')).toLowerCase().trim();
-    if(rol==='supervisor'){
+    if(rol==='supervisor'||rol==='evaluador'){
       out.push({
         email:String(cv_(d[i],m,'email','')),
         nombre:String(cv_(d[i],m,'nombre','')),
@@ -658,8 +730,7 @@ function getEvalSup_(ses){
 }
 
 function asignarEval_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
-  var adm=findU_(s.usuario);if(!adm||adm.rol!=='admin')return{status:'error',message:'No autorizado'};
+  var s=assertPerm_(b.token,'evaluadores');
   var sup=findU_(b.supervisorEmail);if(!sup)return{status:'error',message:'No encontrado'};
   if(sup.m.evaluadores!==undefined){
     sup.sh.getRange(sup.ri+1,sup.m.evaluadores+1).setValue(b.evaluadores||'');
@@ -672,7 +743,7 @@ function asignarEval_(b){
 // SAVE LISTS & EXPORT
 // ═══════════════════════════════════════
 function saveList_(b){
-  var s=sesOk_(b.token);if(!s)return{status:'error',message:'Sesión inválida'};
+  var s=assertPerm_(b.token,'parametros');
   var map={saveParametros:{h:'Parametros',hd:'Parametro'},saveParametrosSupervisores:{h:'Parametros Supervisores',hd:'Parametro'},saveAreas:{h:'Areas',hd:'Area'},saveSedes:{h:'Sedes',hd:'Sede'}};
   var c=map[b.action];if(!c)return{status:'error',message:'?'};
   var ss=SpreadsheetApp.getActiveSpreadsheet();
@@ -686,7 +757,7 @@ function saveList_(b){
 function exportReport_(ses){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var allCols=readColaboradores_(ss);
-  var conv=getConvocatoriaActiva_();
+  var conv=getEleccionActiva_();
   var votos=readVotos_(ss,conv?conv.id:null);
   var proms={};
   for(var i=0;i<votos.length;i++){
@@ -702,9 +773,9 @@ function exportReport_(ses){
     if(!ec[votos[i].ei])ec[votos[i].ei]={};
     ec[votos[i].ei][votos[i].vt]=true;
   }
-  var rows=[['Nombre','Email','Área','Sede','Promedio','Evaluaciones','Convocatoria']];
+  var rows=[['Nombre','Email','Área','Sede','Promedio','Evaluaciones','eleccion']];
   allCols.sort(function(a,b){return(a.area||'').localeCompare(b.area||'')});
-  var convName=conv?conv.nombre:'Sin convocatoria';
+  var convName=conv?conv.nombre:'Sin eleccion';
   for(var i=0;i<allCols.length;i++){
     var c=allCols[i];
     rows.push([c.nombre,c.email,c.area,c.sede,pf[c.email]||'0',ec[c.email]?Object.keys(ec[c.email]).length:0,convName]);
@@ -742,11 +813,11 @@ function readVotos_(ss,convId){
   var d=sh.getRange(2,1,sh.getLastRow()-1,10).getValues();
   var o=[];
   for(var i=0;i<d.length;i++){
-    // New format: col 3 = ConvocatoriaId, col 4 = IdEvaluado
+    // New format: col 3 = eleccionId, col 4 = IdEvaluado
     // Old format: col 3 = IdVotante(unused), col 4 = IdEvaluado
     var cId=String(d[i][3]);
     var eId=String(d[i][4]);
-    // If filtering by convocatoria
+    // If filtering by eleccion
     if(convId&&cId!==convId)continue;
     o.push({vt:String(d[i][1]),ei:eId,p:parseFloat(d[i][7]),conv:cId});
   }
@@ -779,6 +850,263 @@ function tend_(ss,convId){
 }
 
 // ═══════════════════════════════════════
+// EVALUACIÓN DIARIA
+// ═══════════════════════════════════════
+// Hojas:
+//   CategoriasDiarias [Categoria, Area, Pregunta, Orden]
+//   EvalDiaria [Fecha, SupervisorEmail, ColaboradorEmail, EleccionId, Categoria, Pregunta, Nota]
+//   ConfigPesos [Clave, Valor]  (PesoDiaria, PesoEleccion)
+
+/* Get categories with their questions grouped by area */
+function getCatDiarias_(ses){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName('CategoriasDiarias');
+  if(!sh||sh.getLastRow()<=1)return{categorias:[],porArea:{}};
+  var d=sh.getRange(2,1,sh.getLastRow()-1,4).getValues();
+  var cats={},porArea={};
+  for(var i=0;i<d.length;i++){
+    var cat=String(d[i][0]).trim(),area=String(d[i][1]).trim(),preg=String(d[i][2]).trim();
+    if(!cat||!preg)continue;
+    // Global list of categories
+    if(!cats[cat])cats[cat]=true;
+    // By area
+    var key=area||'_GLOBAL';
+    if(!porArea[key])porArea[key]={};
+    if(!porArea[key][cat])porArea[key][cat]=[];
+    porArea[key][cat].push(preg);
+  }
+  return{categorias:Object.keys(cats),porArea:porArea};
+}
+
+/* Save categories/questions (admin) */
+function saveCatDiarias_(b){
+  var s=assertPerm_(b.token,'parametros');
+  // b.datos = [{categoria, area, pregunta}]
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName('CategoriasDiarias');
+  if(!sh){sh=ss.insertSheet('CategoriasDiarias');sh.appendRow(['Categoria','Area','Pregunta','Orden'])}
+  // If area specified, only delete rows for that area; otherwise clear all
+  if(b.area){
+    var d=sh.getDataRange().getValues();
+    for(var i=d.length-1;i>=1;i--){
+      if(String(d[i][1]).trim().toLowerCase()===b.area.toLowerCase()){sh.deleteRow(i+1)}
+    }
+  }else{
+    if(sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,4).clearContent();
+  }
+  var datos=b.datos||[];
+  for(var i=0;i<datos.length;i++){
+    sh.appendRow([datos[i].categoria,datos[i].area||'',datos[i].pregunta,i+1]);
+  }
+  log_('CAT_DIARIAS_SAVE',s.usuario,{area:b.area||'ALL',count:datos.length});
+  return{status:'ok',success:true};
+}
+
+/* Get questions for a specific area (for supervisor eval screen) */
+function getPregDiarias_(ses,b){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName('CategoriasDiarias');
+  if(!sh||sh.getLastRow()<=1)return{};
+  var d=sh.getRange(2,1,sh.getLastRow()-1,4).getValues();
+  var area=b.area||'';
+  var result={};
+  for(var i=0;i<d.length;i++){
+    var cat=String(d[i][0]).trim(),rowArea=String(d[i][1]).trim(),preg=String(d[i][2]).trim();
+    if(!cat||!preg)continue;
+    // Match: exact area match, or global (empty area), or _GLOBAL
+    if(rowArea.toLowerCase()===area.toLowerCase()||rowArea===''||rowArea==='_GLOBAL'){
+      if(!result[cat])result[cat]=[];
+      result[cat].push(preg);
+    }
+  }
+  return result;
+}
+
+/* Get collaborators the supervisor can evaluate daily (based on assigned areas) */
+function getColabsEvalDiaria_(ses,b){
+  var usr=findU_(ses.usuario);
+  if(!usr)throw new Error('No encontrado');
+  if(usr.rol!=='supervisor'&&usr.rol!=='admin')throw new Error('Solo supervisores');
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var allCols=readColaboradores_(ss);
+  // Supervisors can evaluate ALL collaborators daily (not restricted by evaluadores field)
+  // The evaluadores field is only for election evaluator assignment
+  // Exclude self
+  allCols=allCols.filter(function(c){return c.email.toLowerCase()!==usr.email.toLowerCase()});
+  // Group by area
+  var grouped={};
+  allCols.forEach(function(c){
+    var a=c.area||'Sin Área';
+    if(!grouped[a])grouped[a]=[];
+    grouped[a].push(c);
+  });
+  return grouped;
+}
+
+/* Check what's already evaluated today for this supervisor */
+function getEvalDiariaHoy_(ses,b){
+  var usr=findU_(ses.usuario);
+  if(!usr)throw new Error('NF');
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName('EvalDiaria');
+  if(!sh||sh.getLastRow()<=1)return{evaluados:{}};
+  var d=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
+  var hoy=new Date().toLocaleDateString('es-GT');
+  var evaluados={};
+  for(var i=0;i<d.length;i++){
+    var fecha=new Date(d[i][0]).toLocaleDateString('es-GT');
+    var supEmail=String(d[i][1]).toLowerCase();
+    if(fecha===hoy&&supEmail===usr.email.toLowerCase()){
+      var colEmail=String(d[i][2]);
+      if(!evaluados[colEmail])evaluados[colEmail]=[];
+      evaluados[colEmail].push({cat:String(d[i][4]),preg:String(d[i][5]),nota:parseFloat(d[i][6])});
+    }
+  }
+  return{evaluados:evaluados,fecha:hoy};
+}
+
+/* Save daily evaluation */
+function guardarEvalDiaria_(b){
+  var s=sesOk_(b.token);
+  if(!s)return{status:'error',message:'Sesión inválida'};
+  var usr=findU_(s.usuario);
+  if(!usr||(usr.rol!=='supervisor'&&usr.rol!=='admin'))return{status:'error',message:'Solo supervisores'};
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var conv=getEleccionActiva_();
+  var elecId=conv?conv.id:'SIN_ELECCION';
+  var sh=ss.getSheetByName('EvalDiaria');
+  if(!sh){
+    sh=ss.insertSheet('EvalDiaria');
+    sh.appendRow(['Fecha','SupervisorEmail','ColaboradorEmail','EleccionId','Categoria','Pregunta','Nota','Comentario']);
+  }
+  // b.colaboradorEmail, b.calificaciones = [{categoria, pregunta, nota}], b.comentario
+  var fecha=new Date();
+  var comentario=b.comentario||'';
+  var rows=[];
+  for(var i=0;i<b.calificaciones.length;i++){
+    var c=b.calificaciones[i];
+    rows.push([fecha,s.usuario,b.colaboradorEmail,elecId,c.categoria,c.pregunta,c.nota,comentario]);
+  }
+  if(rows.length>0){
+    sh.getRange(sh.getLastRow()+1,1,rows.length,8).setValues(rows);
+  }
+  log_('EVAL_DIARIA',s.usuario,{colab:b.colaboradorEmail,count:rows.length});
+  return{status:'ok',success:true,message:'Evaluación diaria guardada'};
+}
+
+/* Get/Save weight config */
+function getPesos_(ses){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName('ConfigPesos');
+  if(!sh)return{pesoDiaria:40,pesoEleccion:60};
+  var d=sh.getDataRange().getValues();
+  var cfg={pesoDiaria:40,pesoEleccion:60};
+  for(var i=1;i<d.length;i++){
+    var k=String(d[i][0]).toLowerCase().trim();
+    var v=parseFloat(d[i][1]);
+    if(k==='pesodiaria'&&!isNaN(v))cfg.pesoDiaria=v;
+    if(k==='pesoeleccion'&&!isNaN(v))cfg.pesoEleccion=v;
+  }
+  return cfg;
+}
+
+function savePesos_(b){
+  var s=assertPerm_(b.token,'parametros');
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName('ConfigPesos');
+  if(!sh){sh=ss.insertSheet('ConfigPesos');sh.appendRow(['Clave','Valor'])}
+  if(sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,2).clearContent();
+  sh.appendRow(['PesoDiaria',b.pesoDiaria||40]);
+  sh.appendRow(['PesoEleccion',b.pesoEleccion||60]);
+  log_('PESOS_SAVE',s.usuario,{d:b.pesoDiaria,e:b.pesoEleccion});
+  return{status:'ok',success:true};
+}
+
+/* Combined dashboard: daily avg + election avg = final score */
+function getDashCombinado_(ses){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var conv=getEleccionActiva_();
+  var elecId=conv?conv.id:null;
+  var allCols=readColaboradores_(ss);
+  
+  // Get weights
+  var pesos=getPesos_({});
+  var pD=pesos.pesoDiaria/100;
+  var pE=pesos.pesoEleccion/100;
+  
+  // Election votes
+  var votosElec=readVotos_(ss,elecId);
+  var promsElec={};
+  for(var i=0;i<votosElec.length;i++){
+    var v=votosElec[i];
+    if(v.ei&&!isNaN(v.p)&&v.p>0){
+      if(!promsElec[v.ei])promsElec[v.ei]={s:0,c:0};
+      promsElec[v.ei].s+=v.p;promsElec[v.ei].c++;
+    }
+  }
+  var pfElec={};
+  for(var k in promsElec){pfElec[k]=promsElec[k].c>0?promsElec[k].s/promsElec[k].c:0}
+  
+  // Daily evaluations for this election period
+  var shD=ss.getSheetByName('EvalDiaria');
+  var promsDiaria={};
+  if(shD&&shD.getLastRow()>1){
+    var dD=shD.getRange(2,1,shD.getLastRow()-1,7).getValues();
+    for(var i=0;i<dD.length;i++){
+      var eId=String(dD[i][3]);
+      if(elecId&&eId!==elecId)continue;
+      var colEmail=String(dD[i][2]).toLowerCase();
+      var nota=parseFloat(dD[i][6]);
+      if(!isNaN(nota)&&nota>0){
+        if(!promsDiaria[colEmail])promsDiaria[colEmail]={s:0,c:0};
+        promsDiaria[colEmail].s+=nota;promsDiaria[colEmail].c++;
+      }
+    }
+  }
+  var pfDiaria={};
+  for(var k in promsDiaria){pfDiaria[k]=promsDiaria[k].c>0?promsDiaria[k].s/promsDiaria[k].c:0}
+  
+  // Combine scores
+  var resultados=[];
+  for(var i=0;i<allCols.length;i++){
+    var c=allCols[i];
+    var email=c.email.toLowerCase();
+    var avgElec=pfElec[email]||pfElec[c.id]||0;
+    var avgDiaria=pfDiaria[email]||0;
+    var final_score=0;
+    if(avgElec>0&&avgDiaria>0){
+      final_score=(avgDiaria*pD)+(avgElec*pE);
+    }else if(avgElec>0){
+      final_score=avgElec;
+    }else if(avgDiaria>0){
+      final_score=avgDiaria;
+    }
+    resultados.push({
+      email:c.email,nombre:c.nombre,area:c.area,sede:c.sede,foto:c.fotoUrl,
+      promEleccion:avgElec,promDiaria:avgDiaria,puntajeFinal:final_score,
+      evalsDiarias:promsDiaria[email]?promsDiaria[email].c:0
+    });
+  }
+  // Sort by final score desc
+  resultados.sort(function(a,b){return b.puntajeFinal-a.puntajeFinal});
+  
+  // Top by area
+  var topArea={};
+  resultados.forEach(function(r){
+    if(r.puntajeFinal>0&&(!topArea[r.area]||r.puntajeFinal>topArea[r.area].puntajeFinal)){
+      topArea[r.area]=r;
+    }
+  });
+  
+  return{
+    resultados:resultados,
+    topPorArea:topArea,
+    pesos:pesos,
+    eleccion:conv?{id:conv.id,nombre:conv.nombre}:null
+  };
+}
+
+// ═══════════════════════════════════════
 // SETUP - Run ONCE
 // ═══════════════════════════════════════
 function setupPasswordColumns(){
@@ -796,8 +1124,25 @@ function setupPasswordColumns(){
   if(ns.indexOf('evaluadores')===-1){sh.getRange(1,nx).setValue('Evaluadores').setFontWeight('bold');nx++}
   // Ensure sheets
   if(!ss.getSheetByName('Sesiones')){var s2=ss.insertSheet('Sesiones');s2.appendRow(['Token','Usuario','Creado','Expira'])}
-  if(!ss.getSheetByName('Votos')){var v2=ss.insertSheet('Votos');v2.appendRow(['Timestamp','EmailVotante','NombreVotante','ConvocatoriaId','IdEvaluado','NombreEvaluado','Parametro','Puntuacion','Sede','Comentario'])}
-  if(!ss.getSheetByName('Convocatorias')){var c2=ss.insertSheet('Convocatorias');c2.appendRow(['Id','Nombre','FechaInicio','FechaFin','Estado','CreadoPor','FechaCreacion'])}
+  if(!ss.getSheetByName('Votos')){var v2=ss.insertSheet('Votos');v2.appendRow(['Timestamp','EmailVotante','NombreVotante','eleccionId','IdEvaluado','NombreEvaluado','Parametro','Puntuacion','Sede','Comentario'])}
+  if(!ss.getSheetByName('Elecciones')){var c2=ss.insertSheet('Elecciones');c2.appendRow(['Id','Nombre','FechaInicio','FechaFin','Estado','CreadoPor','FechaCreacion'])}
   if(!ss.getSheetByName('ParametrosArea')){var p2=ss.insertSheet('ParametrosArea');p2.appendRow(['Area','Parametro'])}
-  Logger.log('Setup v6 OK');
+  // Daily evaluation sheets
+  if(!ss.getSheetByName('CategoriasDiarias')){var cd=ss.insertSheet('CategoriasDiarias');cd.appendRow(['Categoria','Area','Pregunta','Orden'])}
+  if(!ss.getSheetByName('EvalDiaria')){var ed=ss.insertSheet('EvalDiaria');ed.appendRow(['Fecha','SupervisorEmail','ColaboradorEmail','EleccionId','Categoria','Pregunta','Nota','Comentario'])}
+  if(!ss.getSheetByName('ConfigPesos')){var cp=ss.insertSheet('ConfigPesos');cp.appendRow(['Clave','Valor']);cp.appendRow(['PesoDiaria',40]);cp.appendRow(['PesoEleccion',60])}
+  Logger.log('Setup v8 OK');
+}
+
+/* Remove sheets that are no longer needed */
+function cleanupSheets(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var remove=['Colaboradores','Convocatorias','Parametros Supervisores'];
+  remove.forEach(function(n){
+    var sh=ss.getSheetByName(n);
+    if(sh){
+      try{ss.deleteSheet(sh);Logger.log('Deleted: '+n)}catch(e){Logger.log('Cannot delete '+n+': '+e)}
+    }
+  });
+  Logger.log('Cleanup done. Required sheets: Usuarios, Votos, Elecciones, Parametros, ParametrosArea, Areas, Sedes, CategoriasDiarias, EvalDiaria, ConfigPesos, Sesiones, Auditoria');
 }
