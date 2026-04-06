@@ -71,7 +71,8 @@ body{font-family:'Montserrat',sans-serif;background:var(--s0);color:var(--s9);mi
 .btn-out:hover{border-color:var(--r5);color:var(--r5)}
 
 /* ═══ NAV ═══ */
-.nv{background:var(--w);border-bottom:1px solid var(--s2)}
+.nv{background:var(--w);border-bottom:1px solid var(--s2);position:relative}
+.nv-ham{display:none;background:0;border:0;font-size:1.4rem;padding:10px 14px;cursor:pointer;color:var(--s7);font-weight:700}
 .nv-in{max-width:1360px;margin:0 auto;padding:0 clamp(8px,2vw,32px);display:flex;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .nv-in::-webkit-scrollbar{display:none}
 .nb{padding:12px 16px;font-family:'Montserrat',sans-serif;font-size:.78rem;font-weight:600;color:var(--s4);background:0;border:0;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:color .2s;white-space:nowrap;flex-shrink:0}
@@ -238,15 +239,20 @@ tbody tr:hover{background:var(--s0)}
   .top-r .ch-u,.top-r .ch-a,.top-r .ch-r{display:none}
   .top-in{height:52px;padding:0 12px}
   .br h1{font-size:.82rem}.br span{display:none}
-  .nv-in{padding:0 6px}
-  .nb{padding:10px 12px;font-size:.72rem}
+  /* Hamburger nav */
+  .nv{position:relative}
+  .nv-ham{display:block;width:100%;text-align:left;padding:12px 16px;border-bottom:1px solid var(--s2)}
+  .nv-in{display:none;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:var(--w);box-shadow:var(--sh-l);z-index:99;border-bottom:1px solid var(--s2);padding:8px 0;gap:0}
+  .nv-in.open{display:flex}
+  .nb{padding:14px 20px;font-size:.82rem;border-bottom:0;border-left:3px solid transparent;margin-bottom:0;text-align:left;width:100%}
+  .nb.on{border-left-color:var(--l5);border-bottom:0;background:var(--b0)}
+  .nb:hover{background:var(--s0)}
   .mn{padding:12px}
   .wlc{padding:18px;border-radius:var(--r-l)}.wlc h2{font-size:1.1rem}
   .sts{grid-template-columns:repeat(2,1fr);gap:8px}.st{padding:12px 14px}.st-n{font-size:1.2rem}
   .cg{grid-template-columns:1fr}.ch-r{grid-template-columns:1fr}.top-cards{grid-template-columns:1fr}
   .tb{flex-direction:column}.sr{min-width:100%}
   .cd{padding:14px;border-radius:var(--r)}
-  /* Modal: full screen slide-up on mobile */
   .mo{max-width:100%;border-radius:var(--r-l) var(--r-l) 0 0;max-height:95vh;max-height:95dvh}
   .mo-av{width:64px;height:64px}
   .mo-bd{padding:14px 16px}.mo-ft{padding:0 16px 16px}

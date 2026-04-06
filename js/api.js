@@ -1,7 +1,7 @@
 /**
- * api.js v7
+ * api.js v8
  */
-const API_URL = 'https://script.google.com/macros/s/AKfycbzr6U8hV66SZM1KJ6ZMOh01XZ8hvzOuHjfsQclDAbQg0-VztKWCp-rlJBedKRlymfs5Lg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyVtPZSoQMxuxG1DLdAHU7JwUwQWtBheMOez9uT3Qnrjvhnk5CjC4SRYon9NkznO1EA5Q/exec';
 let _tk=null;
 const api={
   setToken(t){_tk=t},getToken(){return _tk},
@@ -31,12 +31,10 @@ const api={
   async getEvaluadoresSup(){return(await this.call('getEvaluadoresSup')).data},
   asignarEvaluadores(supEmail,evaluadores){return this.call('asignarEvaluadores',{supervisorEmail:supEmail,evaluadores:evaluadores})},
   async getColabsByArea(areas){return(await this.call('getColabsByArea',{areas:areas})).data},
-  // Elecciones (was convocatorias)
   async getElecciones(){return(await this.call('getElecciones')).data},
   crearEleccion(d){return this.call('crearEleccion',d)},
   activarEleccion(id){return this.call('activarEleccion',{id:id})},
   cerrarEleccion(id){return this.call('cerrarEleccion',{id:id})},
-  // Evaluación Diaria
   async getCategoriasDiarias(){return(await this.call('getCategoriasDiarias')).data},
   saveCategoriasDiarias(area,datos){return this.call('saveCategoriasDiarias',{area:area,datos:datos})},
   async getPreguntasDiarias(area){return(await this.call('getPreguntasDiarias',{area:area})).data},

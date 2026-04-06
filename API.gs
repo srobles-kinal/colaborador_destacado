@@ -407,7 +407,7 @@ function getAllData_(ses){
       var emL=em.toLowerCase();
       var rol=String(cv_(r,um,'rol','votante')).toLowerCase().trim();
       var evaluadores=um.evaluadores!==undefined?String(r[um.evaluadores]):'';
-      var colab={id:em,nombre:String(cv_(r,um,'nombre','')),area:String(cv_(r,um,'area','')),fotoUrl:dUrl_(cv_(r,um,'foto','')),email:em,sede:String(cv_(r,um,'sede',''))};
+      var colab={id:em,nombre:String(cv_(r,um,'nombre','')),area:String(cv_(r,um,'area','')).trim(),fotoUrl:dUrl_(cv_(r,um,'foto','')),email:em,sede:String(cv_(r,um,'sede','')).trim()};
       allCols.push(colab);
       uMap[emL]={rol:rol,evaluadores:evaluadores};
       if(rol==='supervisor'||rol==='evaluador'){
@@ -423,47 +423,51 @@ function getAllData_(ses){
   var isAdm=usr.rol==='admin'||usr.rol==='supervisor';
   var isEvaluador=usr.rol==='evaluador';
   var cols;
+  
+  // Normalize helper
+  function norm_(s){return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+  
+  var usrArea=norm_(usr.area);
+  var usrSede=norm_(usr.sede);
+  
   if(isAdm){
-    cols=allCols;
+    cols=allCols.slice(); // admin/supervisor see all
   }else if(isEvaluador){
-    // Evaluador sees people from assigned areas + specific emails
-    var evList=usr.evaluadores?usr.evaluadores.split(',').map(function(x){return x.trim().toLowerCase()}).filter(Boolean):[];
+    var evList=usr.evaluadores?usr.evaluadores.split(',').map(function(x){return norm_(x)}).filter(Boolean):[];
     if(evList.length===0){
-      // No assignments = see own area only
-      cols=allCols.filter(function(c){return c.area.toLowerCase().trim()===usr.area.toLowerCase().trim()});
+      cols=usrArea?allCols.filter(function(c){return norm_(c.area)===usrArea}):[];
     }else{
-      cols=allCols.filter(function(c){
-        var cEmail=c.email.toLowerCase().trim();
-        var cArea=c.area.toLowerCase().trim();
-        return evList.indexOf(cEmail)>=0||evList.indexOf(cArea)>=0;
-      });
+      cols=allCols.filter(function(c){return evList.indexOf(norm_(c.email))>=0||evList.indexOf(norm_(c.area))>=0});
     }
   }else{
-    var usrArea=(usr.area||'').trim();
-    var usrSede=(usr.sede||'').trim();
-    var isMini=usrSede.toLowerCase().indexOf('mini')>=0;
+    // Votante / evaluado
+    var isMini=usrSede.indexOf('mini')>=0;
     if(isMini&&usrSede){
-      cols=allCols.filter(function(c){return c.sede.toLowerCase().trim()===usrSede.toLowerCase()});
-    }else if(usrArea&&usrArea!=='undefined'){
-      cols=allCols.filter(function(c){return c.area.toLowerCase().trim()===usrArea.toLowerCase()});
+      // Mini Muni: filter by exact sede
+      cols=allCols.filter(function(c){return norm_(c.sede)===usrSede});
+    }else if(usrSede){
+      // Has sede but not mini: filter by sede
+      cols=allCols.filter(function(c){return norm_(c.sede)===usrSede});
+    }else if(usrArea){
+      // No sede, has area: filter by area
+      cols=allCols.filter(function(c){return norm_(c.area)===usrArea});
     }else{
-      // No area assigned — only see self (will be excluded later), effectively empty
       cols=[];
     }
   }
-  // Add supervisors for non-admin/non-supervisor users
+  
+  // Add supervisors for non-admin users (so they can evaluate them if assigned)
   if(!isAdm){
     var colEmails={};
-    cols.forEach(function(c){colEmails[c.email.toLowerCase()]=true});
-    var usrEmail=usr.email.toLowerCase();
-    var usrArea=(usr.area||'').toLowerCase().trim();
+    cols.forEach(function(c){colEmails[norm_(c.email)]=true});
+    var usrEmailN=norm_(usr.email);
     supervisores.forEach(function(sup){
-      if(colEmails[sup.colab.email.toLowerCase()])return;
+      if(colEmails[norm_(sup.colab.email)])return;
       if(sup.evaluadoresList.length===0){
         cols.push(sup.colab);
         return;
       }
-      var allowed=sup.evaluadoresList.some(function(e){return e===usrEmail||e===usrArea});
+      var allowed=sup.evaluadoresList.some(function(e){return norm_(e)===usrEmailN||norm_(e)===usrArea});
       if(allowed)cols.push(sup.colab);
     });
   }

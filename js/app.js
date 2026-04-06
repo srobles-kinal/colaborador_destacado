@@ -38,6 +38,8 @@ document.querySelectorAll('.nb').forEach(b=>{b.addEventListener('click',()=>{
   document.querySelectorAll('.nb').forEach(n=>n.classList.remove('on'));
   document.querySelectorAll('.pn').forEach(p=>p.classList.remove('on'));
   b.classList.add('on');$('p-'+b.dataset.tab).classList.add('on');
+  // Close hamburger menu on mobile
+  const navIn=$('navIn');if(navIn)navIn.classList.remove('open');
   const t=b.dataset.tab;
   if(t==='dash')App.dash.load();if(t==='rep')App.rep.load();
   if(t==='usuarios')App.usr.load();if(t==='elecciones')App.elec.load();
@@ -99,6 +101,9 @@ const App={
     // Render voting view
     this.vot.render();
   },
+
+  // ── Nav toggle (hamburger) ──
+  toggleNav(){const n=$('navIn');if(n)n.classList.toggle('open')},
 
   // Sub-modules attached by view files
   vot:{render(){}},dash:{load(){}},rep:{load(){}},
