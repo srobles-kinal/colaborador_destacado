@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Colaborador Destacado</title>
+  <link rel="icon" href="img/escudo-sm.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
@@ -14,9 +15,9 @@
   <div class="login-wrap" id="loginScreen">
     <div class="login-box">
       <img class="login-avatar" id="loginAvatar" src="" alt="">
-      <div class="login-logo">M</div>
+      <img src="img/escudo.png" alt="Escudo" style="width:80px;height:auto;margin-bottom:16px">
       <div class="login-h">Bienvenido</div>
-      <div class="login-sub">Colaborador Destacado · Municipalidad de Guatemala</div>
+      <div class="login-sub">Dirección de Atención al Vecino</div>
       <div class="login-field"><label class="login-lbl">Usuario (email)</label><input type="email" class="login-in" id="loginUser" placeholder="tu@correo.com" autocomplete="username"></div>
       <div class="login-field"><label class="login-lbl">Contraseña</label><input type="password" class="login-in has-toggle" id="loginPass" placeholder="••••••" autocomplete="current-password"><button type="button" class="pwd-toggle">👁️</button></div>
       <button class="login-btn" id="loginBtn" onclick="App.login()">Ingresar</button>
@@ -28,7 +29,7 @@
   <div class="pwd-ov" id="pwdOv">
     <div class="login-box">
       <img class="login-avatar" id="pwdAvatar" src="" alt="">
-      <div class="login-logo">🔐</div>
+      <img src="img/escudo.png" alt="Escudo" style="width:60px;height:auto;margin-bottom:12px">
       <div class="login-h" id="pwdWelcome">¡Hola!</div>
       <div class="login-sub">Es tu primer ingreso. Elegí una nueva contraseña segura.</div>
       <div class="pwd-steps"><div class="pwd-dot active"></div><div class="pwd-dot"></div></div>
@@ -42,7 +43,10 @@
   <!-- APP -->
   <div class="app" id="appShell">
     <header class="top"><div class="top-in">
-      <div class="br"><div class="br-logo">M</div><div><h1>Colaborador Destacado</h1><span>Municipalidad de Guatemala</span></div></div>
+      <div class="br">
+        <img src="img/escudo-sm.png" alt="" style="width:36px;height:auto">
+        <div><h1>Colaborador Destacado</h1><span>Dirección de Atención al Vecino</span></div>
+      </div>
       <div class="top-r">
         <span id="convBadge" style="font-size:.68rem;font-weight:600"></span>
         <img class="top-avatar" id="topAvatar" src="" alt="">
@@ -54,13 +58,12 @@
 
     <nav class="nv"><div class="nv-in">
       <button class="nb on" data-tab="vot">🗳️ Votación</button>
+      <button class="nb hidden" data-tab="evaldia" id="navEvalDia">📋 Eval. Diaria</button>
       <button class="nb hidden" data-tab="dash" id="navDash">📊 Dashboard</button>
       <button class="nb hidden" data-tab="rep" id="navRep">📈 Reportes</button>
-      <!-- Admin modules as separate tabs -->
       <button class="nb hidden" data-tab="usuarios" id="navUsuarios">👤 Usuarios</button>
       <button class="nb hidden" data-tab="elecciones" id="navElecciones">🗓️ Elecciones</button>
       <button class="nb hidden" data-tab="evaluadores" id="navEvaluadores">👔 Evaluadores</button>
-      <button class="nb hidden" data-tab="evaldia" id="navEvalDia">📋 Eval. Diaria</button>
       <button class="nb hidden" data-tab="config" id="navConfig">⚙️ Configuración</button>
     </div></nav>
 
@@ -73,114 +76,103 @@
         <div id="areaCont"><div class="loader"><div class="spin"></div> Cargando...</div></div>
       </section>
 
+      <!-- Eval Diaria -->
+      <section id="p-evaldia" class="pn">
+        <div class="wlc" style="background:linear-gradient(135deg,#0c0566,#080340)"><div class="wlc-line"></div><h2>Evaluación Diaria</h2><p>Evaluá a los colaboradores en las categorías configuradas. Podés cubrir diferentes áreas cada día.</p></div>
+        <div class="sts" id="edSt"></div>
+        <div class="tb"><select class="fp" id="edAreaSel" onchange="App.evalDia.selArea()"><option value="">— Seleccionar área —</option></select></div>
+        <div id="edColabsCont"><div class="empty"><div class="empty-i">📂</div><div class="empty-t">Seleccioná un área para comenzar</div></div></div>
+      </section>
+
       <!-- Dashboard -->
       <section id="p-dash" class="pn">
         <div class="sts" id="dSt"></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏆 Mejor por Área</span></div><div class="top-cards" id="topAreaCont"></div></div>
         <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">🏢 Mejor por Sede</span></div><div class="top-cards" id="topSedeCont"></div></div>
-        <div class="ch-r"><div class="cd"><div class="cd-h"><span class="cd-t">Distribución</span></div><canvas id="cD"></canvas></div><div class="cd"><div class="cd-h"><span class="cd-t">Tendencia</span></div><canvas id="cT"></canvas></div></div>
-        <div class="cd"><div class="cd-h"><span class="cd-t">Por Día</span></div><div class="tw"><table id="tT"></table></div></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📊 Ranking Combinado</span></div><div class="tw"><table id="tRank"></table></div></div>
+        <div class="ch-r"><div class="cd"><div class="cd-h"><span class="cd-t">Puntaje Final</span></div><canvas id="cD"></canvas></div><div class="cd"><div class="cd-h"><span class="cd-t">Tendencia Elección</span></div><canvas id="cT"></canvas></div></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">Evaluaciones por Día</span></div><div class="tw"><table id="tT"></table></div></div>
       </section>
 
       <!-- Reportes -->
       <section id="p-rep" class="pn">
-        <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.expX()">📊 CSV</button></div></div><div class="tw"><table id="tR"></table></div></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">Reporte General</span><div style="display:flex;gap:6px"><button class="btn ba" onclick="App.rep.expX()">📊 CSV</button></div></div><div class="tw"><table id="tR"></table></div></div>
       </section>
 
-      <!-- TAB: EVAL DIARIA (supervisores) -->
-      <section id="p-evaldia" class="pn">
-        <div class="wlc" style="background:linear-gradient(135deg,#0c0566,#080340)">
-          <div class="wlc-line"></div>
-          <h2>Evaluación Diaria</h2>
-          <p>Evaluá a los colaboradores de tus áreas asignadas en las categorías configuradas.</p>
-        </div>
-        <div class="sts" id="edSt"></div>
-        <div class="tb">
-          <select class="fp" id="edAreaSel" onchange="App.evalDia.selArea()"><option value="">— Seleccionar área —</option></select>
-        </div>
-        <div id="edColabsCont"><div class="empty"><div class="empty-i">📂</div><div class="empty-t">Seleccioná un área para ver los colaboradores</div></div></div>
-      </section>
-
-      <!-- MODAL: EVAL DIARIA -->
-      <div class="mo-bg" id="edEvalOv"><div class="mo" style="max-width:600px">
-        <div class="mo-top"><button class="mo-x" onclick="App.evalDia.closeModal()">✕</button>
-          <div class="mo-profile"><img class="mo-av" id="edEvalFoto" src="" alt=""><div class="mo-nm" id="edEvalNm">—</div><div class="mo-mt" id="edEvalMt">Evaluación diaria</div></div>
-        </div>
-        <div class="mo-bd" id="edEvalBd" style="max-height:55vh;overflow-y:auto"></div>
-        <div class="mo-ft"><button class="btn-sub" id="edEvalBtn" onclick="App.evalDia.submit()">Guardar Evaluación Diaria</button></div>
-      </div></div>
-
-      <!-- TAB: USUARIOS (permiso: usuarios) -->
+      <!-- Usuarios -->
       <section id="p-usuarios" class="pn">
         <div class="cd">
-          <div class="cd-h"><span class="cd-t">👤 Gestión de Usuarios</span><button class="btn ba" onclick="App.openNewUser()">+ Nuevo</button></div>
+          <div class="cd-h"><span class="cd-t">👤 Gestión de Usuarios</span><button class="btn ba" onclick="App.usr.openNew()">+ Nuevo</button></div>
           <div class="tw"><table class="usr-tbl"><thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Área</th><th>Sede</th><th>Acciones</th></tr></thead><tbody id="usrBody"></tbody></table></div>
         </div>
       </section>
 
-      <!-- TAB: ELECCIONES (permiso: elecciones) -->
+      <!-- Elecciones -->
       <section id="p-elecciones" class="pn">
         <div class="cd">
-          <div class="cd-h"><span class="cd-t">🗓️ Elecciones (Períodos de Evaluación)</span><button class="btn ba" onclick="App.crearElec()">+ Nueva Elección</button></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Creá una elección por mes. Al activarla, las evaluaciones se registran ahí. Solo puede haber una activa.</p>
+          <div class="cd-h"><span class="cd-t">🗓️ Elecciones</span><button class="btn ba" onclick="App.elec.crear()">+ Nueva</button></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Creá una elección por período. Al activarla, las evaluaciones se registran ahí. Solo puede haber una activa.</p>
           <div id="elecCont"><div class="loader"><div class="spin"></div></div></div>
         </div>
       </section>
 
-      <!-- TAB: EVALUADORES (permiso: evaluadores) -->
+      <!-- Evaluadores -->
       <section id="p-evaluadores" class="pn">
-        <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">👔 Asignación de Evaluadores</span></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Seleccioná áreas y colaboradores que pueden evaluar a cada supervisor o evaluador. Podés cambiar esto cada mes.</p>
+        <div class="cd">
+          <div class="cd-h"><span class="cd-t">👔 Evaluadores de Supervisores</span></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Asigná qué colaboradores evalúan a cada supervisor durante las elecciones.</p>
           <div id="supEvalCont"><div class="loader"><div class="spin"></div></div></div>
         </div>
       </section>
 
-      <!-- TAB: CONFIGURACIÓN (permiso: parametros) -->
+      <!-- Configuración -->
       <section id="p-config" class="pn">
         <div class="sts" id="cfgSt"></div>
-
-        <!-- Pesos configurables -->
         <div class="cd" style="margin-bottom:14px">
           <div class="cd-h"><span class="cd-t">⚖️ Pesos de Evaluación</span></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Configurá qué porcentaje del puntaje final viene de la evaluación diaria del supervisor y qué porcentaje de la elección de compañeros. Deben sumar 100.</p>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Porcentaje del puntaje final: diaria (supervisor) + elección (compañeros). Deben sumar 100.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:400px">
             <div class="fg"><label class="fl">Eval. Diaria (%)</label><input class="login-in" type="number" id="pesoDiaria" value="40" min="0" max="100"></div>
             <div class="fg"><label class="fl">Elección (%)</label><input class="login-in" type="number" id="pesoEleccion" value="60" min="0" max="100"></div>
           </div>
-          <button class="btn bp" style="margin-top:8px" onclick="App.savePesos()">💾 Guardar pesos</button>
+          <button class="btn bp" style="margin-top:8px" onclick="App.cfg.savePesos()">💾 Guardar pesos</button>
         </div>
-
-        <!-- Categorías y preguntas diarias -->
         <div class="cd" style="margin-bottom:14px">
           <div class="cd-h"><span class="cd-t">📋 Categorías y Preguntas Diarias</span></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Configurá las categorías (ej: 5's, Lineamientos, Generales) y sus preguntas para cada área. Seleccioná un área para editar.</p>
-          <div class="tb" style="margin-bottom:12px">
-            <select class="fp" id="catAreaSel" onchange="App.loadCatArea()"><option value="">— Seleccionar área —</option></select>
-          </div>
-          <div id="catAreaCont"><div class="empty"><div class="empty-t">Seleccioná un área para configurar sus preguntas</div></div></div>
+          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Configurá las categorías y preguntas de la evaluación diaria para cada área.</p>
+          <div class="tb" style="margin-bottom:12px"><select class="fp" id="catAreaSel" onchange="App.cfg.loadCatArea()"><option value="">— Seleccionar área —</option></select></div>
+          <div id="catAreaCont"><div class="empty"><div class="empty-t">Seleccioná un área para configurar</div></div></div>
         </div>
-
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📊 Parámetros por Área</span></div><p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Cada área puede tener sus propios parámetros. Si no, usa los globales.</p><div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Globales</span><button class="btn ba" onclick="App.adm.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('p')">💾</button></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.adm.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ps')">💾</button></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.adm.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('ar')">💾</button></div>
-        <div class="cd"><div class="cd-h"><span class="cd-t">🏢 Sedes</span><button class="btn ba" onclick="App.adm.add('se')">+</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:8px" onclick="App.adm.save('se')">💾</button></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📊 Parámetros por Área</span></div><p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Parámetros de evaluación de elección por área.</p><div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Globales</span><button class="btn ba" onclick="App.cfg.lists.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('p')">💾</button></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.cfg.lists.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('ps')">💾</button></div>
+        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.cfg.lists.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('ar')">💾</button></div>
+        <div class="cd"><div class="cd-h"><span class="cd-t">🏢 Sedes</span><button class="btn ba" onclick="App.cfg.lists.add('se')">+</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('se')">💾</button></div>
       </section>
     </div>
   </div>
 
-  <!-- MODAL: EVALUAR -->
+  <!-- MODAL: EVALUAR (elección) -->
   <div class="mo-bg" id="evalOv"><div class="mo">
-    <div class="mo-top"><button class="mo-x" onclick="App.closeEval()">✕</button><div class="mo-profile"><img class="mo-av" id="evalFoto" src="" alt=""><div class="mo-nm" id="evalNm">—</div><div class="mo-mt" id="evalMt">—</div></div></div>
+    <div class="mo-top"><button class="mo-x" onclick="App.vot.closeEval()">✕</button><div class="mo-profile"><img class="mo-av" id="evalFoto" src="" alt=""><div class="mo-nm" id="evalNm">—</div><div class="mo-mt" id="evalMt">—</div></div></div>
     <div class="mo-bd" id="evalBd"></div>
     <div class="mo-bd" style="padding-top:0"><div class="fg"><label class="fl">Comentario (opcional)</label><textarea class="fta" id="evalCom" placeholder="Comparte tu experiencia..."></textarea></div></div>
-    <div class="mo-ft"><button class="btn-sub" id="evalBtn" onclick="App.submitEval()">Enviar Evaluación</button></div>
+    <div class="mo-ft"><button class="btn-sub" id="evalBtn" onclick="App.vot.submitEval()">Enviar Evaluación</button></div>
+  </div></div>
+
+  <!-- MODAL: EVAL DIARIA -->
+  <div class="mo-bg" id="edEvalOv"><div class="mo" style="max-width:600px">
+    <div class="mo-top"><button class="mo-x" onclick="App.evalDia.closeModal()">✕</button>
+      <div class="mo-profile"><img class="mo-av" id="edEvalFoto" src="" alt=""><div class="mo-nm" id="edEvalNm">—</div><div class="mo-mt" id="edEvalMt">Evaluación diaria</div></div>
+    </div>
+    <div class="mo-bd" id="edEvalBd" style="max-height:50vh;overflow-y:auto"></div>
+    <div class="mo-bd" style="padding-top:0"><div class="fg"><label class="fl">Comentario (opcional)</label><textarea class="fta" id="edEvalCom" placeholder="Observaciones sobre el colaborador..."></textarea></div></div>
+    <div class="mo-ft"><button class="btn-sub" id="edEvalBtn" onclick="App.evalDia.submit()">Guardar Evaluación Diaria</button></div>
   </div></div>
 
   <!-- MODAL: NUEVO USUARIO -->
   <div class="mo-bg" id="nuOv"><div class="mo">
-    <div class="mo-top" style="padding-bottom:0"><div style="flex:1"><div class="mo-nm">Nuevo Usuario</div><div class="mo-mt">Completá los datos</div></div><button class="mo-x" onclick="App.closeNewUser()">✕</button></div>
+    <div class="mo-top" style="padding-bottom:0"><div style="flex:1"><div class="mo-nm">Nuevo Usuario</div><div class="mo-mt">Completá los datos</div></div><button class="mo-x" onclick="App.usr.closeNew()">✕</button></div>
     <div class="mo-bd">
       <div class="fg"><label class="fl">Email</label><input class="login-in" id="nuEmail" placeholder="usuario@correo.com"></div>
       <div class="fg"><label class="fl">Nombre completo</label><input class="login-in" id="nuNombre" placeholder="Nombre Apellido"></div>
@@ -195,12 +187,12 @@
       <div class="fg"><label class="fl">Permisos adicionales</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="nu-perm"> Dashboard</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="nu-perm"> Reportes</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="nu-perm"> Usuarios</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="elecciones" class="nu-perm"> Elecciones</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="evaluadores" class="nu-perm"> Evaluadores</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="parametros" class="nu-perm"> Configuración</label></div></div>
       <div class="fg"><label class="fl">Foto (URL)</label><input class="login-in" id="nuFoto" placeholder="https://drive.google.com/..."></div>
     </div>
-    <div class="mo-ft"><button class="btn-sub" onclick="App.saveNewUser()">Crear Usuario</button></div>
+    <div class="mo-ft"><button class="btn-sub" onclick="App.usr.saveNew()">Crear Usuario</button></div>
   </div></div>
 
   <!-- MODAL: EDITAR USUARIO -->
   <div class="mo-bg" id="edOv"><div class="mo">
-    <div class="mo-top" style="padding-bottom:0"><div style="flex:1"><div class="mo-nm">Editar Usuario</div><div class="mo-mt" id="edEmail">—</div></div><button class="mo-x" onclick="App.closeEditUser()">✕</button></div>
+    <div class="mo-top" style="padding-bottom:0"><div style="flex:1"><div class="mo-nm">Editar Usuario</div><div class="mo-mt" id="edEmail">—</div></div><button class="mo-x" onclick="App.usr.closeEdit()">✕</button></div>
     <div class="mo-bd">
       <div class="fg"><label class="fl">Nombre</label><input class="login-in" id="edNombre"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -214,11 +206,21 @@
       <div class="fg"><label class="fl">Permisos adicionales</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="dashboard" class="ed-perm"> Dashboard</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="reportes" class="ed-perm"> Reportes</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="usuarios" class="ed-perm"> Usuarios</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="elecciones" class="ed-perm"> Elecciones</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="evaluadores" class="ed-perm"> Evaluadores</label><label style="font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="parametros" class="ed-perm"> Configuración</label></div></div>
       <div class="fg"><label class="fl">Foto (URL)</label><input class="login-in" id="edFoto"></div>
     </div>
-    <div class="mo-ft"><button class="btn-sub" onclick="App.saveEditUser()">Guardar Cambios</button></div>
+    <div class="mo-ft"><button class="btn-sub" onclick="App.usr.saveEdit()">Guardar Cambios</button></div>
   </div></div>
 
   <div class="tz" id="toasts"></div>
+
+  <!-- Scripts: core first, then views -->
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/views/votacion.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/reportes.js"></script>
+  <script src="js/views/usuarios.js"></script>
+  <script src="js/views/elecciones.js"></script>
+  <script src="js/views/evaluadores.js"></script>
+  <script src="js/views/config.js"></script>
+  <script src="js/views/evaldiaria.js"></script>
 </body>
 </html>
