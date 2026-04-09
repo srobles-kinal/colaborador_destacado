@@ -165,31 +165,31 @@ var UserRepo={
   findByEmail:function(email){
     var e=norm_(email);
     if(this._cache[e]!==undefined)return this._cache[e];
+    // Read sheet once, cache ALL users
     var ss=SpreadsheetApp.getActiveSpreadsheet();
     var sh=ss.getSheetByName('Usuarios');
-    if(!sh)return null;
+    if(!sh){this._cache[e]=null;return null}
     var m=hm_(sh),d=sh.getDataRange().getValues();
-    if(m.email===undefined)return null;
+    if(m.email===undefined){this._cache[e]=null;return null}
     for(var i=1;i<d.length;i++){
-      if(norm_(d[i][m.email])===e){
-        var permisos=m.permisos!==undefined?String(d[i][m.permisos]||''):'';
-        var result={
-          ri:i,sh:sh,m:m,email:String(d[i][m.email]).trim(),
-          nombre:String(cv_(d[i],m,'nombre','')),
-          rol:norm_(cv_(d[i],m,'rol','votante')),
-          area:String(cv_(d[i],m,'area','')).trim(),
-          activo:m.activo!==undefined?isT_(d[i][m.activo]):true,
-          pwd:String(cv_(d[i],m,'pwd','')),
-          primer:m.primer!==undefined?isT_(d[i][m.primer]):false,
-          sede:String(cv_(d[i],m,'sede','')).trim(),
-          foto:dUrl_(cv_(d[i],m,'foto','')),
-          permisos:permisos?permisos.split(',').map(function(p){return p.trim()}):[],
-          evaluadores:m.evaluadores!==undefined?String(d[i][m.evaluadores]||''):'',empresa:String(cv_(d[i],m,'empresa',''))
-        };
-        this._cache[e]=result;return result;
-      }
+      var rowEmail=norm_(d[i][m.email]);
+      if(this._cache[rowEmail]!==undefined)continue;
+      var permisos=m.permisos!==undefined?String(d[i][m.permisos]||''):'';
+      this._cache[rowEmail]={
+        ri:i,sh:sh,m:m,email:String(d[i][m.email]).trim(),
+        nombre:String(cv_(d[i],m,'nombre','')),
+        rol:norm_(cv_(d[i],m,'rol','votante')),
+        area:String(cv_(d[i],m,'area','')).trim(),
+        activo:m.activo!==undefined?isT_(d[i][m.activo]):true,
+        pwd:String(cv_(d[i],m,'pwd','')),
+        primer:m.primer!==undefined?isT_(d[i][m.primer]):false,
+        sede:String(cv_(d[i],m,'sede','')).trim(),
+        foto:dUrl_(cv_(d[i],m,'foto','')),
+        permisos:permisos?permisos.split(',').map(function(p){return p.trim()}):[],
+        evaluadores:m.evaluadores!==undefined?String(d[i][m.evaluadores]||''):'',empresa:String(cv_(d[i],m,'empresa',''))
+      };
     }
-    this._cache[e]=null;return null;
+    return this._cache[e]||null;
   },
 
   // Read ALL active users once — returns {allCols, uMap, supervisores}
@@ -295,18 +295,20 @@ var UserRepo={
 
 // ── Session Repository ──
 var SessionRepo={
+  _sesCache:{},
   validate:function(tk){
     if(!tk)return null;
+    if(this._sesCache[tk]!==undefined)return this._sesCache[tk];
     var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sesiones');
-    if(!sh)return null;
+    if(!sh){this._sesCache[tk]=null;return null}
     var d=sh.getDataRange().getValues(),now=new Date();
     for(var i=1;i<d.length;i++){
       if(d[i][0]===tk){
-        if(now>new Date(d[i][3])){sh.deleteRow(i+1);return null}
-        return{usuario:d[i][1]};
+        if(now>new Date(d[i][3])){sh.deleteRow(i+1);this._sesCache[tk]=null;return null}
+        var r={usuario:d[i][1]};this._sesCache[tk]=r;return r;
       }
     }
-    return null;
+    this._sesCache[tk]=null;return null;
   },
   create:function(email,token){
     var ss=SpreadsheetApp.getActiveSpreadsheet();
@@ -796,8 +798,12 @@ var DataService={
   getComentarios:function(ses){
     if(!hasPerm_(ses.usuario,'comentarios'))throw new Error('No autorizado');
     var ss=SpreadsheetApp.getActiveSpreadsheet();
+    // Build name map ONCE from readAll
+    var data=UserRepo.readAll();
+    var nameMap={};
+    data.allCols.forEach(function(c){nameMap[norm_(c.email)]=c.nombre});
     var comentarios=[];
-    // Comments from election votes (col 9 = Comentario, col 4 = IdEvaluado, col 5 = NombreEvaluado)
+    // Comments from election votes
     var vSh=ss.getSheetByName('Votos');
     if(vSh&&vSh.getLastRow()>1){
       var vD=vSh.getRange(2,1,vSh.getLastRow()-1,10).getValues();
@@ -810,7 +816,7 @@ var DataService={
         comentarios.push({tipo:'eleccion',fecha:new Date(vD[i][0]).toLocaleDateString('es-GT'),evaluador:String(vD[i][2]||vD[i][1]),colaborador:String(vD[i][5]||vD[i][4]),emailColab:String(vD[i][4]),comentario:com});
       }
     }
-    // Comments from daily eval (col 7 = Comentario, col 2 = ColaboradorEmail)
+    // Comments from daily eval — use nameMap instead of findByEmail
     var dSh=ss.getSheetByName('EvalDiaria');
     if(dSh&&dSh.getLastRow()>1){
       var dD=dSh.getRange(2,1,dSh.getLastRow()-1,8).getValues();
@@ -820,12 +826,11 @@ var DataService={
         if(!com)continue;
         var key='d|'+dD[i][1]+'|'+dD[i][2]+'|'+com;
         if(seen2[key])continue;seen2[key]=true;
-        var supUsr=UserRepo.findByEmail(String(dD[i][1]));
-        var colUsr=UserRepo.findByEmail(String(dD[i][2]));
-        comentarios.push({tipo:'diaria',fecha:new Date(dD[i][0]).toLocaleDateString('es-GT'),evaluador:supUsr?supUsr.nombre:String(dD[i][1]),colaborador:colUsr?colUsr.nombre:String(dD[i][2]),emailColab:String(dD[i][2]),comentario:com});
+        var supName=nameMap[norm_(dD[i][1])]||String(dD[i][1]);
+        var colName=nameMap[norm_(dD[i][2])]||String(dD[i][2]);
+        comentarios.push({tipo:'diaria',fecha:new Date(dD[i][0]).toLocaleDateString('es-GT'),evaluador:supName,colaborador:colName,emailColab:String(dD[i][2]),comentario:com});
       }
     }
-    // Sort by date desc
     comentarios.sort(function(a,b){return b.fecha.localeCompare(a.fecha)});
     return comentarios;
   }
@@ -858,7 +863,10 @@ var EvaluatorService={
   getSupervisors:function(ses){
     if(!hasPerm_(ses.usuario,'evaluadores'))throw new Error('No autorizado');
     var data=UserRepo.readAll();
-    return data.supervisores.map(function(s){return{email:s.colab.email,nombre:s.colab.nombre,evaluadores:data.uMap[norm_(s.colab.email)]?.evaluadores||''}});
+    return data.supervisores.map(function(s){
+      var u=data.uMap[norm_(s.colab.email)];
+      return{email:s.colab.email,nombre:s.colab.nombre,evaluadores:u?u.evaluadores||'':''};
+    });
   },
   assign:function(b){
     var s=assertPerm_(b.token,'evaluadores');
