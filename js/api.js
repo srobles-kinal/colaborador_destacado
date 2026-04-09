@@ -1,7 +1,7 @@
 /**
- * api.js v8
+ * api.js v9
  */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyVtPZSoQMxuxG1DLdAHU7JwUwQWtBheMOez9uT3Qnrjvhnk5CjC4SRYon9NkznO1EA5Q/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyheE8CEEkX_6_w9EkYgyfiep6DMPYy6ssuI2_WPeyN6uCWjcoHbFbf-SmoL7fg57SSmw/exec';
 let _tk=null;
 const api={
   setToken(t){_tk=t},getToken(){return _tk},
@@ -40,9 +40,10 @@ const api={
   async getPreguntasDiarias(area){return(await this.call('getPreguntasDiarias',{area:area})).data},
   guardarEvalDiaria(d){return this.call('guardarEvalDiaria',d)},
   async getEvalDiariaHoy(){return(await this.call('getEvalDiariaHoy')).data},
-  async getColabsParaEvalDiaria(){return(await this.call('getColabsParaEvalDiaria')).data},
+  async getColabsParaEvalDiaria(sede){return(await this.call('getColabsParaEvalDiaria',{sede:sede||''})).data},
   async getPesos(){return(await this.call('getPesos')).data},
   savePesos(d,e){return this.call('savePesos',{pesoDiaria:d,pesoEleccion:e})},
   async getDashboardCombinado(){return(await this.call('getDashboardCombinado')).data},
+  async getComentarios(){return(await this.call('getComentarios')).data},
 };
 window.api=api;

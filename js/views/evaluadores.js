@@ -1,42 +1,23 @@
 /**
- * views/evaluadores.js — Assign evaluators for supervisors (election only)
+ * views/elecciones.js
  */
-App.evalAsign={
+App.elec={
   async load(){
-    const ct=$('supEvalCont');if(!ct)return;
+    const ct=$('elecCont');if(!ct)return;
     try{
-      const sups=await api.getEvaluadoresSup();
-      const areas=DATA?.areas||ADM.ar||[];
-      if(!sups.length){ct.innerHTML='<div class="empty"><div class="empty-t">No hay supervisores ni evaluadores registrados</div></div>';return}
-      ct.innerHTML=sups.map(s=>{
-        const cur=(s.evaluadores||'').split(',').map(e=>e.trim().toLowerCase()).filter(Boolean);
-        const safeId=s.email.replace(/[@.]/g,'_');
-        return '<div style="margin-bottom:16px;padding:14px;border:1px solid var(--s2);border-radius:10px;background:var(--s0)">'
-          +'<div style="font-weight:700;font-size:.85rem;margin-bottom:8px">'+esc(s.nombre)+' <span style="color:var(--s4);font-weight:400;font-size:.75rem">('+esc(s.email)+')</span></div>'
-          +'<div class="fl" style="margin-bottom:4px">1. Seleccioná áreas:</div>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+areas.map(a=>'<label style="font-size:.74rem;display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--w);padding:4px 10px;border-radius:6px;border:1px solid var(--s2)"><input type="checkbox" class="sup-area-cb" data-sup="'+esc(s.email)+'" value="'+esc(a)+'"'+(cur.indexOf(a.toLowerCase())>=0?' checked':'')+'>'+esc(a)+'</label>').join('')+'</div>'
-          +'<div class="fl" style="margin-bottom:4px">2. Colaboradores:</div>'
-          +'<div id="sup-c-'+safeId+'" style="margin-bottom:8px"><div style="font-size:.75rem;color:var(--s4)">Presioná "Cargar" para ver la lista</div></div>'
-          +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bo" style="font-size:.72rem;padding:6px 12px" onclick="App.evalAsign.loadColabs(\''+esc(s.email)+'\')">🔄 Cargar</button><button class="btn bp" style="font-size:.72rem;padding:6px 12px" onclick="App.evalAsign.save(\''+esc(s.email)+'\')">💾 Guardar</button></div></div>';
+      const els=await api.getElecciones();
+      if(!els.length){ct.innerHTML='<div class="empty"><div class="empty-t">No hay elecciones. Creá la primera.</div></div>';return}
+      ct.innerHTML=els.map(c=>{
+        const isA=c.estado==='activa';
+        const badge=isA?'<span style="background:var(--g0);color:var(--g6);padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700">● Activa</span>':c.estado==='cerrada'?'<span style="background:var(--s1);color:var(--s4);padding:2px 8px;border-radius:20px;font-size:.68rem">Cerrada</span>':'<span style="background:var(--b0);color:var(--b8);padding:2px 8px;border-radius:20px;font-size:.68rem">Borrador</span>';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--s2);border-radius:10px;margin-bottom:8px;background:var(--s0);flex-wrap:wrap;gap:8px"><div><strong style="font-size:.85rem">'+esc(c.nombre)+'</strong> '+badge+'</div><div style="display:flex;gap:4px">'
+          +(!isA&&c.estado!=='cerrada'?'<button class="btn ba" style="padding:4px 10px;font-size:.68rem" onclick="App.elec.activar(\''+c.id+'\')">▶ Activar</button>':'')
+          +(isA?'<button class="btn bd" style="padding:4px 10px;font-size:.68rem" onclick="App.elec.cerrar(\''+c.id+'\')">⏹ Cerrar</button>':'')
+          +'</div></div>';
       }).join('');
     }catch(e){ct.innerHTML='<div class="empty">'+e.message+'</div>'}
   },
-  async loadColabs(supEmail){
-    const safeId=supEmail.replace(/[@.]/g,'_');const ct=$('sup-c-'+safeId);if(!ct)return;
-    const areas=[];document.querySelectorAll('.sup-area-cb[data-sup="'+supEmail+'"]').forEach(cb=>{if(cb.checked)areas.push(cb.value)});
-    if(!areas.length){ct.innerHTML='<div style="font-size:.75rem;color:var(--s4)">Seleccioná al menos un área</div>';return}
-    try{
-      const colabs=await api.getColabsByArea(areas);
-      const sups=await api.getEvaluadoresSup();
-      const thisSup=sups.find(s=>s.email===supEmail);
-      const cur=(thisSup?.evaluadores||'').split(',').map(e=>e.trim().toLowerCase()).filter(Boolean);
-      ct.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px"><label style="font-size:.74rem;display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--b0);padding:4px 10px;border-radius:6px;border:1px solid var(--b8);font-weight:600"><input type="checkbox" onchange="App.evalAsign.togAll(\''+esc(supEmail)+'\',this.checked)"> Todos</label>'
-        +colabs.map(c=>'<label style="font-size:.74rem;display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--w);padding:4px 10px;border-radius:6px;border:1px solid var(--s2)"><input type="checkbox" class="sup-colab-cb" data-sup="'+esc(supEmail)+'" value="'+esc(c.email)+'"'+(cur.indexOf(c.email.toLowerCase())>=0?' checked':'')+'>'+esc(c.nombre)+'</label>').join('')+'</div>';
-    }catch(e){ct.innerHTML='<div style="font-size:.75rem;color:var(--r5)">'+e.message+'</div>'}
-  },
-  togAll(sup,chk){document.querySelectorAll('.sup-colab-cb[data-sup="'+sup+'"]').forEach(cb=>{cb.checked=chk})},
-  async save(supEmail){
-    const colabs=[];document.querySelectorAll('.sup-colab-cb[data-sup="'+supEmail+'"]').forEach(cb=>{if(cb.checked)colabs.push(cb.value)});
-    try{const r=await api.asignarEvaluadores(supEmail,colabs.join(','));if(r.success)toast('Asignados','ok');else toast(r.message,'err')}catch(e){toast(e.message,'err')}
-  }
+  async crear(){const n=prompt('Nombre de la elección (ej: Marzo 2026):');if(!n)return;try{const r=await api.crearEleccion({nombre:n});if(r.success){toast('Creada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}},
+  async activar(id){if(!confirm('¿Activar? La anterior se cerrará.'))return;try{const r=await api.activarEleccion(id);if(r.success){toast('Activada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}},
+  async cerrar(id){if(!confirm('¿Cerrar esta elección?'))return;try{const r=await api.cerrarEleccion(id);if(r.success){toast('Cerrada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}}
 };

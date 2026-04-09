@@ -279,6 +279,7 @@ tbody tr:hover{background:var(--s0)}
   .cd-t{font-size:.88rem}
   /* Stack table cells */
   .usr-tbl thead th:nth-child(n+4),.usr-tbl tbody td:nth-child(n+4){display:none}
+  .usr-tbl thead th:last-child,.usr-tbl tbody td:last-child{display:table-cell}
 }
 
 /* Small phone */
@@ -320,7 +321,10 @@ tbody tr:hover{background:var(--s0)}
 
 /* ═══ Print ═══ */
 @media print{
-  .top,.nv,.mo-bg,.tz,.btn,.btn-ev,.btn-out,.wlc{display:none!important}
+  .top,.nv,.mo-bg,.tz,.btn,.btn-ev,.btn-out,.wlc,footer{display:none!important}
   .app.show{display:block}.pn{display:block!important}
   .cd{break-inside:avoid;box-shadow:none;border:1px solid #ddd}
 }
+
+/* ═══ Footer (always visible) ═══ */
+.app-footer{background:var(--w);border-top:1px solid var(--s2);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:10px;position:sticky;bottom:0;z-index:50}

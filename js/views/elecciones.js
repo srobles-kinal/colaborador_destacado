@@ -17,7 +17,7 @@ App.elec={
       }).join('');
     }catch(e){ct.innerHTML='<div class="empty">'+e.message+'</div>'}
   },
-  async crear(){const n=prompt('Nombre de la elección (ej: Marzo 2026):');if(!n)return;try{const r=await api.crearEleccion({nombre:n});if(r.success){toast('Elección creada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}},
-  async activar(id){if(!confirm('¿Activar esta elección? La anterior se cerrará.'))return;try{const r=await api.activarEleccion(id);if(r.success){toast('Activada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}},
+  async crear(){const n=prompt('Nombre de la elección (ej: Marzo 2026):');if(!n)return;try{const r=await api.crearEleccion({nombre:n});if(r.success){toast('Creada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}},
+  async activar(id){if(!confirm('¿Activar? La anterior se cerrará.'))return;try{const r=await api.activarEleccion(id);if(r.success){toast('Activada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}},
   async cerrar(id){if(!confirm('¿Cerrar esta elección?'))return;try{const r=await api.cerrarEleccion(id);if(r.success){toast('Cerrada','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}}
 };

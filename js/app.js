@@ -45,6 +45,7 @@ document.querySelectorAll('.nb').forEach(b=>{b.addEventListener('click',()=>{
   if(t==='usuarios')App.usr.load();if(t==='elecciones')App.elec.load();
   if(t==='evaluadores')App.evalAsign.load();if(t==='config')App.cfg.load();
   if(t==='evaldia')App.evalDia.load();
+  if(t==='comentarios')App.comentarios.load();
 })});
 document.querySelectorAll('.pwd-toggle').forEach(btn=>{btn.addEventListener('click',()=>{const i=btn.previousElementSibling;if(i.type==='password'){i.type='text';btn.textContent='🙈'}else{i.type='password';btn.textContent='👁️'}})});
 document.addEventListener('click',function(e){const btn=e.target.closest('.rb-b');if(!btn)return;const rr=btn.parentElement;if(rr.dataset.dparam)return;e.preventDefault();const p=rr.dataset.param;const v=parseInt(btn.dataset.v);if(!p||isNaN(v))return;if(window._activeRatings)window._activeRatings[p]=v;rr.querySelectorAll('.rb-b').forEach(b=>{b.classList.toggle('on',parseInt(b.dataset.v)<=v)})});
@@ -96,8 +97,12 @@ const App={
     toggle('navDash','dashboard');toggle('navRep','reportes');
     toggle('navUsuarios','usuarios');toggle('navElecciones','elecciones');
     toggle('navEvaluadores','evaluadores');toggle('navConfig','parametros');
+    toggle('navComentarios','comentarios');
     const isSupOrAdmin=USER.rol==='supervisor'||USER.rol==='admin';
     const navED=$('navEvalDia');if(navED)navED.classList.toggle('hidden',!isSupOrAdmin);
+    // Show user's promedio next to avatar
+    const topProm=$('topProm');
+    if(topProm&&DATA.miPromedio){topProm.textContent=parseFloat(DATA.miPromedio).toFixed(1)}else if(topProm){topProm.textContent=''}
     // Render voting view
     this.vot.render();
   },
@@ -108,6 +113,6 @@ const App={
   // Sub-modules attached by view files
   vot:{render(){}},dash:{load(){}},rep:{load(){}},
   usr:{load(){}},elec:{load(){}},evalAsign:{load(){}},
-  cfg:{load(){}},evalDia:{load(){}},
+  cfg:{load(){}},evalDia:{load(){}},comentarios:{load(){},search(){}},
 };
 window.App=App;

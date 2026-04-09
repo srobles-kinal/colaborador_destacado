@@ -1,5 +1,5 @@
 /**
- * views/votacion.js — Voting tab + eval modal
+ * views/votacion.js — empresa in cards, alphabetical sort
  */
 (function(){
   let EV={id:null,nombre:'',ratings:{},_params:[]};
@@ -15,14 +15,16 @@
         '<div class="st sa"><div class="st-i">📊</div><div class="st-n">'+(a.tasaParticipacion||0)+'%</div><div class="st-l">Participación</div></div>';
       this.renderFilters();this.renderAreas();
     },
-    renderFilters(){const s=$('fSede');s.innerHTML='<option value="">Todas las sedes</option>';(DATA.sedes||[]).forEach(x=>{s.innerHTML+='<option value="'+esc(x)+'">'+esc(x)+'</option>'});s.onchange=()=>this.renderAreas();$('fS').oninput=()=>this.renderAreas()},
+    renderFilters(){const s=$('fSede');s.innerHTML='<option value="">Todas las sedes</option>';(DATA.sedes||[]).slice().sort().forEach(x=>{s.innerHTML+='<option value="'+esc(x)+'">'+esc(x)+'</option>'});s.onchange=()=>this.renderAreas();$('fS').oninput=()=>this.renderAreas()},
     renderAreas(){
       const ct=$('areaCont'),search=$('fS').value.toLowerCase(),sede=$('fSede').value;
       let cl=DATA.colaboradores||[];
       if(sede)cl=cl.filter(x=>x.sede===sede);if(search)cl=cl.filter(x=>x.nombre.toLowerCase().includes(search));
       const g={};cl.forEach(x=>{const a=x.area||'Sin Área';if(!g[a])g[a]=[];g[a].push(x)});
+      // Sort collaborators alphabetically within each area
+      Object.keys(g).forEach(a=>{g[a].sort(function(x,y){return(x.nombre||'').localeCompare(y.nombre||'')})});
       const nm=Object.keys(g).sort();
-      if(!DATA.eleccionActiva){ct.innerHTML='<div class="empty"><div class="empty-i">🗓️</div><div class="empty-t">No hay elección activa. Contacta al administrador.</div></div>';return}
+      if(!DATA.eleccionActiva){ct.innerHTML='<div class="empty"><div class="empty-i">🗓️</div><div class="empty-t">No hay elección activa</div></div>';return}
       if(!nm.length){ct.innerHTML='<div class="empty"><div class="empty-i">🔍</div><div class="empty-t">No se encontraron colaboradores</div></div>';return}
       ct.innerHTML=nm.map((area,idx)=>{
         const ls=g[area],col=gc(idx),dn=ls.filter(x=>DATA.evaluacionesUnicas?.[USER.email+'|'+x.id]).length,pn=ls.length-dn;
@@ -34,15 +36,15 @@
       ls.forEach(c=>{window._cd[c.id]=c;window._cd[c.id]._area=area});
       return '<div class="cg">'+ls.map(c=>{
         const k=USER.email+'|'+c.id,done=DATA.evaluacionesUnicas?.[k],pm=DATA.promedios?.[String(c.id)],pv=pm?parseFloat(pm):0,pt=pm?pv.toFixed(1):'—',bw=pm?(pv/10*100):0;
-        return '<div class="cc '+(done?'dn':'')+'"><div class="dn-b">✓ Evaluado</div><img class="av" src="'+(c.fotoUrl||fb(c.nombre))+'" onerror="this.src=\''+fb(c.nombre)+'\'"><div class="ci"><div class="cn">'+esc(c.nombre)+'</div><div class="cm">'+esc(c.sede||'')+'</div><div class="cs-r"><span class="cs">'+pt+'</span><div class="bar-bg"><div class="bar-f" style="width:'+bw+'%"></div></div></div>'+(done?'':'<button class="btn-ev" onclick="App.vot.openEval(\''+c.id+'\')">Evaluar</button>')+'</div></div>';
+        const empresaTag=c.empresa?'<span style="font-size:.62rem;background:var(--b0);color:var(--b8);padding:1px 6px;border-radius:4px;font-weight:600">'+esc(c.empresa)+'</span>':'';
+        return '<div class="cc '+(done?'dn':'')+'"><div class="dn-b">✓ Evaluado</div><img class="av" src="'+(c.fotoUrl||fb(c.nombre))+'" onerror="this.src=\''+fb(c.nombre)+'\'"><div class="ci"><div class="cn">'+esc(c.nombre)+'</div><div class="cm">'+esc(c.sede||'')+' '+empresaTag+'</div><div class="cs-r"><span class="cs">'+pt+'</span><div class="bar-bg"><div class="bar-f" style="width:'+bw+'%"></div></div></div>'+(done?'':'<button class="btn-ev" onclick="App.vot.openEval(\''+c.id+'\')">Evaluar</button>')+'</div></div>';
       }).join('')+'</div>';
     },
     tog(h){h.classList.toggle('op');const b=$('bd-'+h.dataset.a.replace(/\s/g,'_'));if(b)b.classList.toggle('op')},
-
     openEval(id){
       const c=window._cd?.[id];if(!c)return;
       EV={id:c.id,nombre:c.nombre,ratings:{},_params:[]};window._activeRatings=EV.ratings;
-      $('evalNm').textContent=c.nombre;$('evalMt').textContent=[c.area,c.sede].filter(Boolean).join(' · ');
+      $('evalNm').textContent=c.nombre;$('evalMt').textContent=[c.area,c.sede,c.empresa].filter(Boolean).join(' · ');
       $('evalFoto').src=c.fotoUrl||fb(c.nombre);$('evalFoto').onerror=function(){this.src=fb(c.nombre)};$('evalCom').value='';
       const ap=DATA.parametrosArea?.[c._area||c.area];
       const params=ap&&ap.length?ap:(DATA.parametros||[]);EV._params=params;
