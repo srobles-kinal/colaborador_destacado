@@ -30,7 +30,7 @@
       const grouped={};
       filtered.forEach(c=>{
         const key=c.emailColab||c.colaborador;
-        if(!grouped[key])grouped[key]={nombre:c.colaborador,email:c.emailColab,items:[]};
+        if(!grouped[key])grouped[key]={nombre:c.colaborador,email:c.emailColab,empresa:c.empresa||'',items:[]};
         grouped[key].items.push(c);
       });
 
@@ -40,7 +40,7 @@
         const g=grouped[key];
         return '<div style="margin-bottom:14px;border:1px solid var(--s2);border-radius:10px;overflow:hidden">'
           +'<div style="padding:10px 14px;background:var(--s0);font-weight:700;font-size:.85rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--s2)">'
-          +'<span>'+esc(g.nombre)+'</span>'
+          +'<span>'+esc(g.nombre)+(g.empresa?' <span style="font-size:.62rem;background:var(--b0);color:var(--b8);padding:1px 6px;border-radius:4px">'+esc(g.empresa)+'</span>':'')+'</span>'
           +'<span style="font-size:.68rem;color:var(--s4);font-weight:400">'+g.items.length+' comentario'+(g.items.length>1?'s':'')+'</span></div>'
           +g.items.map(c=>{
             const tipoBadge=c.tipo==='eleccion'

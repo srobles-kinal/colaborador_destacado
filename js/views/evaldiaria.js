@@ -77,19 +77,18 @@
 
     _renderColabs(area){
       const ct=$('edColabsCont');
-      let colabs=_colabs[area]||[];
-      // Apply sede filter if selected
+      let colabs=(_colabs[area]||[]).slice();
       const sedeFilter=$('edSedeSel').value;
-      if(sedeFilter){
-        colabs=colabs.filter(c=>c.sede===sedeFilter);
-      }
+      if(sedeFilter){colabs=colabs.filter(c=>c.sede===sedeFilter)}
+      colabs.sort(function(a,b){return(a.nombre||'').localeCompare(b.nombre||'')});
       if(!colabs.length){ct.innerHTML='<div class="empty"><div class="empty-t">No hay colaboradores'+(sedeFilter?' en '+sedeFilter:'')+'</div></div>';return}
       const hoy=_hoyData?.evaluados||{};
       ct.innerHTML='<div class="cg">'+colabs.map(c=>{
         const done=hoy[c.email];
         const avgHoy=done?done.reduce((s,x)=>s+x.nota,0)/done.length:0;
+        const empTag=c.empresa?'<span style="font-size:.62rem;background:var(--b0);color:var(--b8);padding:1px 6px;border-radius:4px;font-weight:600">'+esc(c.empresa)+'</span>':'';
         return '<div class="cc"><img class="av" src="'+(c.fotoUrl||fb(c.nombre))+'" onerror="this.src=\''+fb(c.nombre)+'\'">'
-          +'<div class="ci"><div class="cn">'+esc(c.nombre)+'</div><div class="cm">'+esc(c.sede||'')+'</div>'
+          +'<div class="ci"><div class="cn">'+esc(c.nombre)+'</div><div class="cm">'+esc(c.sede||'')+' '+empTag+'</div>'
           +(done?'<div style="font-size:.72rem;color:var(--g6);font-weight:600;margin-bottom:4px">✓ Evaluado hoy ('+avgHoy.toFixed(1)+')</div>':'')
           +'<button class="btn-ev" data-eval-email="'+esc(c.email)+'" data-eval-area="'+esc(area)+'">'+(done?'Re-evaluar':'Evaluar')+'</button>'
           +'</div></div>';

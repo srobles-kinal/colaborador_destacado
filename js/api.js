@@ -1,7 +1,7 @@
 /**
  * api.js v9
  */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyBOV7Qjva15nzqHCrkGnieL6uzYQJ0Ujy1yeHEhQ8wNYc20wIiuw3CWcrabqfL1ucUlA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxR0B4GDZG_hJ3y83F5zJVF_2VCWrMhh6eteeJvDq2YSTpSEBAxPu9m_Cbsnht-dSiQig/exec';
 let _tk=null;
 const api={
   setToken(t){_tk=t},getToken(){return _tk},
@@ -45,5 +45,9 @@ const api={
   savePesos(d,e){return this.call('savePesos',{pesoDiaria:d,pesoEleccion:e})},
   async getDashboardCombinado(){return(await this.call('getDashboardCombinado')).data},
   async getComentarios(){return(await this.call('getComentarios')).data},
+  saveEmpresas(v){return this.call('saveEmpresas',{valores:v})},
+  async getEmpresas(){return(await this.call('getEmpresas')).data},
+  async getEmpresas(){return(await this.call('getEmpresas')).data},
+  saveEmpresas(v){return this.call('saveEmpresas',{valores:v})},
 };
 window.api=api;
