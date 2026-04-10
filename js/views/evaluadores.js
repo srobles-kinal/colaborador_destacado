@@ -40,7 +40,7 @@
     togAll(sup,chk){document.querySelectorAll('.sup-colab-cb[data-sup="'+sup+'"]').forEach(cb=>{cb.checked=chk})},
     async save(supEmail){
       const colabs=[];document.querySelectorAll('.sup-colab-cb[data-sup="'+supEmail+'"]').forEach(cb=>{if(cb.checked)colabs.push(cb.value)});
-      try{const r=await api.asignarEvaluadores(supEmail,colabs.join(','));if(r.success){toast('Asignados','ok');this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}
+      try{const r=await api.asignarEvaluadores(supEmail,colabs.join(','));if(r.success){toast('Asignados','ok');this.load();syncData()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}
     }
   };
 })();

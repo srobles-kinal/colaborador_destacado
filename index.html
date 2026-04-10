@@ -141,27 +141,58 @@
       <!-- Configuración -->
       <section id="p-config" class="pn">
         <div class="sts" id="cfgSt"></div>
-        <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">⚖️ Pesos de Evaluación</span></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Porcentaje del puntaje final: diaria (supervisor) + elección (compañeros). Deben sumar 100.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:400px">
-            <div class="fg"><label class="fl">Eval. Diaria (%)</label><input class="login-in" type="number" id="pesoDiaria" value="40" min="0" max="100"></div>
-            <div class="fg"><label class="fl">Elección (%)</label><input class="login-in" type="number" id="pesoEleccion" value="60" min="0" max="100"></div>
+        <!-- Config internal tabs -->
+        <div class="cfg-tabs" id="cfgTabs">
+          <button class="cfg-tab on" data-cfg="pesos" onclick="App.cfg.tab('pesos')">⚖️ Pesos</button>
+          <button class="cfg-tab" data-cfg="catdia" onclick="App.cfg.tab('catdia')">📋 Categorías Diarias</button>
+          <button class="cfg-tab" data-cfg="params" onclick="App.cfg.tab('params')">📊 Parámetros</button>
+          <button class="cfg-tab" data-cfg="listas" onclick="App.cfg.tab('listas')">📂 Áreas, Sedes y Empresas</button>
+        </div>
+
+        <!-- Pesos -->
+        <div class="cfg-pn on" id="cfg-pesos">
+          <div class="cd">
+            <div class="cd-h"><span class="cd-t">⚖️ Pesos de Evaluación</span></div>
+            <p style="font-size:.78rem;color:var(--s5);margin-bottom:14px;line-height:1.5">Define qué porcentaje del puntaje final corresponde a la evaluación diaria del supervisor y cuál a la elección entre compañeros. Ambos deben sumar 100.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:400px;margin-bottom:14px">
+              <div class="fg"><label class="fl">Eval. Diaria (%)</label><input class="login-in" type="number" id="pesoDiaria" value="40" min="0" max="100"></div>
+              <div class="fg"><label class="fl">Elección (%)</label><input class="login-in" type="number" id="pesoEleccion" value="60" min="0" max="100"></div>
+            </div>
+            <button class="btn bp" onclick="App.cfg.savePesos()">💾 Guardar pesos</button>
           </div>
-          <button class="btn bp" style="margin-top:8px" onclick="App.cfg.savePesos()">💾 Guardar pesos</button>
         </div>
-        <div class="cd" style="margin-bottom:14px">
-          <div class="cd-h"><span class="cd-t">📋 Categorías y Preguntas Diarias</span></div>
-          <p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Configurá las categorías y preguntas de la evaluación diaria para cada área.</p>
-          <div class="tb" style="margin-bottom:12px"><select class="fp" id="catAreaSel" onchange="App.cfg.loadCatArea()"><option value="">— Seleccionar área —</option></select></div>
-          <div id="catAreaCont"><div class="empty"><div class="empty-t">Seleccioná un área para configurar</div></div></div>
+
+        <!-- Categorías Diarias -->
+        <div class="cfg-pn" id="cfg-catdia">
+          <div class="cd">
+            <div class="cd-h"><span class="cd-t">📋 Categorías y Preguntas Diarias</span></div>
+            <p style="font-size:.78rem;color:var(--s5);margin-bottom:14px;line-height:1.5">Cada área puede tener sus propias categorías con preguntas. El supervisor las verá al evaluar colaboradores de esa área.</p>
+            <div style="margin-bottom:14px"><select class="fp" id="catAreaSel" onchange="App.cfg.loadCatArea()" style="width:100%;max-width:400px"><option value="">— Seleccionar área —</option></select></div>
+            <div id="catAreaCont"><div class="empty"><div class="empty-i">📂</div><div class="empty-t">Seleccioná un área arriba para configurar sus categorías</div></div></div>
+          </div>
         </div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📊 Parámetros por Área</span></div><p style="font-size:.75rem;color:var(--s5);margin-bottom:10px">Parámetros de evaluación de elección por área.</p><div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📋 Parámetros Globales</span><button class="btn ba" onclick="App.cfg.lists.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('p')">💾</button></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" onclick="App.cfg.lists.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('ps')">💾</button></div>
-        <div class="cd" style="margin-bottom:14px"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" onclick="App.cfg.lists.add('ar')">+</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('ar')">💾</button></div>
-        <div class="cd"><div class="cd-h"><span class="cd-t">🏢 Sedes</span><button class="btn ba" onclick="App.cfg.lists.add('se')">+</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('se')">💾</button></div>
-        <div class="cd"><div class="cd-h"><span class="cd-t">🏛️ Empresas / Dependencias</span><button class="btn ba" onclick="App.cfg.lists.add('em')">+</button></div><div id="adEM"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('em')">💾</button></div>
+
+        <!-- Parámetros -->
+        <div class="cfg-pn" id="cfg-params">
+          <div class="cd" style="margin-bottom:14px">
+            <div class="cd-h"><span class="cd-t">📊 Parámetros por Área (Elección)</span></div>
+            <p style="font-size:.78rem;color:var(--s5);margin-bottom:14px;line-height:1.5">Parámetros que los compañeros califican durante la elección. Si un área no tiene propios, usa los globales.</p>
+            <div id="paramsAreaCont"><div class="loader"><div class="spin"></div></div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="cd"><div class="cd-h"><span class="cd-t">📋 Parámetros Globales</span><button class="btn ba" style="font-size:.7rem" onclick="App.cfg.lists.add('p')">+</button></div><div id="adP"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('p')">💾</button></div>
+            <div class="cd"><div class="cd-h"><span class="cd-t">👔 Parámetros Supervisores</span><button class="btn ba" style="font-size:.7rem" onclick="App.cfg.lists.add('ps')">+</button></div><div id="adPS"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('ps')">💾</button></div>
+          </div>
+        </div>
+
+        <!-- Listas: Áreas, Sedes, Empresas -->
+        <div class="cfg-pn" id="cfg-listas">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+            <div class="cd"><div class="cd-h"><span class="cd-t">📂 Áreas</span><button class="btn ba" style="font-size:.7rem" onclick="App.cfg.lists.add('ar')">+ Agregar</button></div><div id="adAR"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('ar')">💾 Guardar</button></div>
+            <div class="cd"><div class="cd-h"><span class="cd-t">🏢 Sedes</span><button class="btn ba" style="font-size:.7rem" onclick="App.cfg.lists.add('se')">+ Agregar</button></div><div id="adSE"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('se')">💾 Guardar</button></div>
+            <div class="cd"><div class="cd-h"><span class="cd-t">🏛️ Empresas / Dependencias</span><button class="btn ba" style="font-size:.7rem" onclick="App.cfg.lists.add('em')">+ Agregar</button></div><div id="adEM"></div><button class="btn bp" style="margin-top:8px" onclick="App.cfg.lists.save('em')">💾 Guardar</button></div>
+          </div>
+        </div>
       </section>
 
       <!-- TAB: COMENTARIOS (permiso: comentarios) -->

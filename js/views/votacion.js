@@ -58,7 +58,7 @@
       const btn=$('evalBtn');btn.disabled=true;btn.textContent='Enviando...';
       try{
         const res=await api.guardarVotos({evaluadoId:EV.id,evaluadoNombre:EV.nombre,calificaciones:params.map(p=>({parametro:p,puntuacion:EV.ratings[p]})),sede:$('fSede').value||'',comentario:$('evalCom').value});
-        if(res.success){toast(res.message||'Guardado','ok');DATA.evaluacionesUnicas[USER.email+'|'+EV.id]=true;if(res.nuevoPromedio)DATA.promedios[String(EV.id)]=res.nuevoPromedio;this.renderAreas();this.closeEval()}
+        if(res.success){toast(res.message||'Guardado','ok');DATA.evaluacionesUnicas[USER.email+'|'+EV.id]=true;if(res.nuevoPromedio)DATA.promedios[String(EV.id)]=res.nuevoPromedio;this.renderAreas();this.closeEval();syncData()}
         else toast(res.message||'Error','err');
       }catch(e){toast(e.message,'err')}
       btn.disabled=false;btn.textContent='Enviar Evaluación';

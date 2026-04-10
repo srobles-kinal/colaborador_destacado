@@ -136,7 +136,7 @@
       const btn=$('edEvalBtn');btn.disabled=true;btn.textContent='Guardando...';
       try{
         const r=await api.guardarEvalDiaria({colaboradorEmail:_currentColab.email,calificaciones:calificaciones,comentario:comentario});
-        if(r.success){toast('Evaluación guardada','ok');this.closeModal();this.load()}
+        if(r.success){toast('Evaluación guardada','ok');this.closeModal();this.load();syncData()}
         else toast(r.message,'err');
       }catch(e){toast(e.message,'err')}
       btn.disabled=false;btn.textContent='Guardar Evaluación Diaria';

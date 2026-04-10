@@ -43,7 +43,7 @@
         foto:$('nuFoto')?$('nuFoto').value.trim():'',
         empresa:$('nuEmpresa')?$('nuEmpresa').value:''};
       if(!d.email||!d.nombre){toast('Email y nombre requeridos','err');return}
-      try{const r=await api.crearUsuario(d);if(r.success){toast('Creado','ok');this.closeNew();this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}
+      try{const r=await api.crearUsuario(d);if(r.success){toast('Creado','ok');this.closeNew();this.load();syncData()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}
     },
     edit(email){
       const u=_users.find(x=>x.email===email);if(!u)return;
@@ -65,9 +65,9 @@
         area:$('edArea').value,sede:$('edSede').value,activo:$('edActivo').value==='true',permisos:perms,
         foto:$('edFoto')?$('edFoto').value.trim():undefined,
         empresa:$('edEmpresa')?$('edEmpresa').value:undefined};
-      try{const r=await api.editarUsuario(d);if(r.success){toast('Actualizado','ok');this.closeEdit();this.load()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}
+      try{const r=await api.editarUsuario(d);if(r.success){toast('Actualizado','ok');this.closeEdit();this.load();syncData()}else toast(r.message,'err')}catch(e){toast(e.message,'err')}
     },
     async resetPwd(email){if(!confirm('¿Reiniciar contraseña de '+email+'?'))return;try{const r=await api.resetPassword(email);if(r.success){toast('Reiniciada','ok');alert('Contraseña temporal: '+(r.tempPassword||'Muni2025'))}else toast(r.message,'err')}catch(e){toast(e.message,'err')}},
-    del(email){if(!confirm('¿Eliminar '+email+'?'))return;api.eliminarUsuario(email).then(r=>{if(r.success){toast('Eliminado','ok');this.load()}else toast(r.message,'err')}).catch(e=>toast(e.message,'err'))}
+    del(email){if(!confirm('¿Eliminar '+email+'?'))return;api.eliminarUsuario(email).then(r=>{if(r.success){toast('Eliminado','ok');this.load();syncData()}else toast(r.message,'err')}).catch(e=>toast(e.message,'err'))}
   };
 })();

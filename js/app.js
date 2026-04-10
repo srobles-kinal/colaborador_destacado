@@ -2,7 +2,13 @@
  * app.js v8 — Core: auth, session, nav, helpers
  * Views are in js/views/*.js
  */
-let USER=null,DATA=null,ADM={p:[],ps:[],ar:[],se:[]};
+let USER=null,DATA=null,ADM={p:[],ps:[],ar:[],se:[],em:[]};
+
+// ── Global sync: refresh DATA after any admin change ──
+async function syncData(){
+  try{DATA=await api.getAllData();App.render();return true}catch(e){return false}
+}
+window.syncData=syncData;
 const COLS=[{bg:'#eef2ff',br:'#818cf8',ic:'#4f46e5'},{bg:'#ecfdf5',br:'#34d399',ic:'#059669'},{bg:'#fffbeb',br:'#fbbf24',ic:'#d97706'},{bg:'#fef2f2',br:'#f87171',ic:'#dc2626'},{bg:'#f0f9ff',br:'#38bdf8',ic:'#0284c7'},{bg:'#fdf4ff',br:'#c084fc',ic:'#9333ea'}];
 function gc(i){return COLS[i%COLS.length]}
 function $(s){return document.getElementById(s)}
